@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>前台收銀系統 (POS)</title>
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+
+    <style>
+        /* 自訂一點樣式，讓它看起來像收銀機 */
+        .product-wall { height: 90vh; overflow-y: auto; background-color: #f0f2f5; }
+        .cart-panel { height: 90vh; display: flex; flex-direction: column; border-left: 2px solid #ddd; }
+        .product-card { cursor: pointer; transition: transform 0.1s; height: 100%; }
+        .product-card:active { transform: scale(0.95); } /* 點擊時縮一下 */
+        .cart-items { flex-grow: 1; overflow-y: auto; }
+        .total-section { background-color: #e9ecef; padding: 20px; border-top: 2px solid #ccc; }
+    </style>
+</head>
+<body>
+
+<div id="app" class="container-fluid">
+    <div class="row">
+        
+        <div class="col-8 product-wall p-4">
+            <h3 class="mb-4 fw-bold text-primary">🏪 商品選擇</h3>
+            
+            <div class="row g-3">
+                <div class="col-md-3 col-sm-4" v-for="product in products" :key="product.id">
+                    <div class="card product-card text-center shadow-sm border-0" @click="addToCart(product)">
+                        <div class="card-body d-flex flex-column justify-content-center">
+                            <h5 class="card-title fw-bold">{{ product.name }}</h5>
+                            <p class="card-text text-danger fs-5">${{ product.price }}</p>
+                            <small class="text-muted">庫存: {{ product.current_stock }}</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-4 cart-panel bg-white p-0">
+            <div class="p-3 bg-dark text-white">
+                <h4 class="m-0">🛒 購物清單</h4>
+            </div>
+
+            <div class="cart-items p-3">
+                <table class="table table-striped table-hover">
+                    <thead>
+                        <tr>
+                            <th>品名</th>
+                            <th style="width: 60px;">數量</th>
+                            <th class="text-end">小計</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr v-for="(item, index) in cart" :key="index">
+                            <td>{{ item.name }}</td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-secondary py-0 px-1" @click="item.quantity--">-</button>
+                                {{ item.quantity }}
+                                <button class="btn btn-sm btn-outline-secondary py-0 px-1" @click="item.quantity++">+</button>
+                            </td>
+                            <td class="text-end">${{ item.price * item.quantity }}</td>
+                            <td>
+                                <button class="btn btn-sm btn-danger text-white" @click="removeFromCart(index)">×</button>
+                            </td>
+                        </tr>
+                        <tr v-if="cart.length === 0">
+                            <td colspan="4" class="text-center text-muted py-4">尚未加入商品</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="total-section">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h4 class="m-0">總金額</h4>
+                    <h2 class="m-0 text-danger fw-bold">${{ totalPrice }}</h2>
+                </div>
+                <button class="btn btn-success w-100 btn-lg fw-bold" @click="showCheckoutModal" :disabled="cart.length === 0">
+                    結帳 (Checkout)
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="checkoutModal" tabindex="-1" ref="modalRef">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title">請選擇客層標籤</h5>
+                    <button type="button" class="btn-close" @click="closeModal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-center mb-3">請點選顧客類型以完成交易：</p>
+                    <div class="d-grid gap-2">
+                        <div class="row g-2">
+                            <div class="col-6"><button class="btn btn-outline-primary w-100 py-3" @click="submitOrder('學生')">🧑‍🎓 學生</button></div>
+                            <div class="col-6"><button class="btn btn-outline-secondary w-100 py-3" @click="submitOrder('上班族')">💼 上班族</button></div>
+                            <div class="col-6"><button class="btn btn-outline-success w-100 py-3" @click="submitOrder('家庭主婦/夫')">🏠 家庭</button></div>
+                            <div class="col-6"><button class="btn btn-outline-warning w-100 py-3" @click="submitOrder('長輩')">👴 長輩</button></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    const { createApp } = Vue
+
+    createApp({
+        data() {
+            return {
+                // 1. 這是你的「商品資料」，之後要改用 axios 從後端抓
+                products: [
+                    { id: 1001, name: '可口可樂', price: 25, current_stock: 50 },
+                    { id: 1002, name: '茶葉蛋', price: 10, current_stock: 200 },
+                    { id: 1003, name: '御飯糰-肉鬆', price: 30, current_stock: 5 },
+                    { id: 1004, name: '統一布丁', price: 12, current_stock: 15 },
+                    { id: 1005, name: '科學麵', price: 10, current_stock: 80 },
+                ],
+                // 2. 這是「購物車」，一開始是空的
+                cart: [],
+                // 3. 用來控制彈窗的變數
+                modalInstance: null
+            }
+        },
+        computed: {
+            // 自動計算總金額 (Vue 的強大之處，不用自己寫迴圈加總)
+            totalPrice() {
+                return this.cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            }
+        },
+        mounted() {
+            // 畫面載入後執行
+            // 初始化 Bootstrap Modal
+            this.modalInstance = new bootstrap.Modal(document.getElementById('checkoutModal'));
+            
+            // TODO: 在這裡寫 axios.get 來跟後端拿真的商品資料
+            // this.fetchProducts();
+        },
+        methods: {
+            // 加入購物車邏輯
+            addToCart(product) {
+                // 檢查購物車有沒有這個商品
+                const existingItem = this.cart.find(item => item.id === product.id);
+                
+                if (existingItem) {
+                    existingItem.quantity++; // 有的話數量+1
+                } else {
+                    // 沒有的話，push 一個新的物件進去
+                    this.cart.push({
+                        id: product.id,
+                        name: product.name,
+                        price: product.price,
+                        quantity: 1
+                    });
+                }
+            },
+            // 移除商品
+            removeFromCart(index) {
+                this.cart.splice(index, 1); // 從陣列中刪除
+            },
+            // 顯示結帳彈窗
+            showCheckoutModal() {
+                this.modalInstance.show();
+            },
+            // 關閉彈窗
+            closeModal() {
+                this.modalInstance.hide();
+            },
+            // 送出訂單 (按了客層按鈕後)
+            submitOrder(customerTag) {
+                console.log("結帳客層:", customerTag);
+                console.log("購買內容:", this.cart);
+                console.log("總金額:", this.totalPrice);
+
+                // TODO: 這裡要寫 axios.post 把資料送給後端 API
+                // axios.post('http://127.0.0.1:5000/api/sales/checkout', { ... })
+
+                alert(`結帳成功！\n客層：${customerTag}\n金額：$${this.totalPrice}`);
+                
+                // 清空購物車並關閉彈窗
+                this.cart = [];
+                this.closeModal();
+            }
+        }
+    }).mount('#app')
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+</body>
+</html>
