@@ -1,0 +1,16 @@
+# Python 標準忽略清單
+__pycache__/
+*.py[cod]
+*$py.class
+
+# 虛擬環境 (Virtual Environments)
+venv/
+env/
+ENV/
+.env
+
+# VS Code 設定檔 (每個人習慣不同，不要上傳)
+.vscode/
+
+# Mac 系統產生的垃圾檔
+.DS_Store
