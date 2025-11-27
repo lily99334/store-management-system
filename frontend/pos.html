@@ -82,7 +82,10 @@
             border: 1px solid #eee; /* 加上淡淡邊框 */
             border-radius: 15px; /* 圓角 */
             background: white;
-            height: 100%;
+            height: 120px !important; 
+            min-height: 120px !important;
+            max-height: 120px !important;
+            overflow: hidden;
         }
 
         .product-card:hover {
@@ -90,6 +93,7 @@
             box-shadow: 0 10px 20px rgba(0,129,98,0.15); /* 陰影改成綠色調 */
             border: 2px solid var(--seven-green); /* 選中時的框線顏色 */
         }
+        .product-card:active { transform: scale(0.98); }
 
         .product-price {
             color: var(--seven-red); /* 價格用小七紅 */
@@ -208,14 +212,14 @@
                         <div class="card product-card h-100 overflow-hidden border-0 shadow-sm" @click="addToCart(product)">
                             <div class="row g-0 h-100">
                                 
-                                <div class="col-4 bg-light d-flex align-items-center justify-content-center p-0">
-                                    <img :src="`https://placehold.co/150x150/e9ecef/495057?text=${product.name.substring(0,2)}`" 
+                                <div class="col-4 bg-light d-flex align-items-center justify-content-center p-0 h-100">
+                                    <img :src="product.image_url"
                                         class="img-fluid" 
                                         style="width: 100%; height: 100%; object-fit: cover;" 
                                         alt="商品圖">
                                 </div>
                                 
-                                <div class="col-8">
+                                <div class="col-8 h-100">
                                     <div class="card-body p-2 d-flex flex-column justify-content-center h-100">
                                         
                                         <h6 class="card-title fw-bold text-dark mb-1 text-truncate" style="font-size: 0.95rem;">
@@ -526,14 +530,8 @@
             return {
                 // --- [開發階段] 假資料 ---
                 // 等後端 API 寫好後，這裡可以留空 []，改用 fetchProducts() 填入
-                products: [
-                    { id: 1001, name: '可口可樂', category: '飲料', price: 25, current_stock: 50 },
-                    { id: 1002, name: '茶葉蛋', category: '熟食', price: 10, current_stock: 200 },
-                    { id: 1003, name: '御飯糰-肉鬆', category: '鮮食', price: 30, current_stock: 5 },
-                    { id: 1004, name: '統一布丁', category: '甜點', price: 12, current_stock: 15 },
-                    { id: 1005, name: '科學麵', category: '零食', price: 10, current_stock: 0 } 
-                ],
                 cart: [],
+                products: [],
                 inputProductId: '', // 用來綁定輸入框的變數
                 modalInstance: null,
                 confirmModalInstance: null, // 確認彈窗
@@ -574,7 +572,7 @@
             // 初始化查無商品彈窗
             this.notFoundModalInstance = new bootstrap.Modal(document.getElementById('notFoundModal'));
             // TODO: 正式串接時，請把下面這行註解打開
-            // this.fetchProducts();
+            this.fetchProducts();
         },
         methods: {
             // --- 1. 串接後端 API：取得商品列表 ---
@@ -583,6 +581,7 @@
                 axios.get('http://127.0.0.1:5000/api/products')
                     .then(response => {
                         this.products = response.data;
+                        console.log(this.products);
                     })
                     .catch(error => {
                         console.error("無法取得商品資料:", error);
@@ -642,6 +641,11 @@
             },
             closeNotFoundModal() {
                 this.notFoundModalInstance.hide();
+
+                // 稍微延遲一下，等視窗關閉動畫跑完，把游標鎖回輸入框
+                setTimeout(() => {
+                    document.querySelector('.input-section input').focus();
+                }, 300);
             },
             
             decreaseQty(item) {
@@ -758,25 +762,31 @@
                 console.log("送出訂單:", orderData);
 
                 // TODO: 正式串接時，請把下面這段打開
-                /*
+                
                 axios.post('http://127.0.0.1:5000/api/sales/checkout', orderData)
                     .then(response => {
-                        alert(`✅ 結帳成功！\n客層：${customerTag}\n總金額：$${this.totalPrice}`);
+                        // 成功後：清空購物車、關閉視窗
                         this.cart = [];
                         this.closeModal();
-                        this.fetchProducts(); // 重新抓取商品資料，更新庫存顯示
+                        
+                        // 顯示成功彈窗
+                        this.successModalInstance.show();
+                        
+                        // 🔥 重要：重新抓取商品資料 (因為庫存變了！)
+                        this.fetchProducts(); 
                     })
                     .catch(error => {
-                        alert("❌ 結帳失敗：" + error.response.data.message);
+                        console.error(error);
+                        alert("❌ 結帳失敗：" + error.message);
                     });
-                */
+                
 
-                // --- 模擬結帳成功，串接後請刪除 ---
-                this.cart = [];
-                this.closeModal();
+                // // --- 模擬結帳成功，串接後請刪除 ---
+                // this.cart = [];
+                // this.closeModal();
 
-                //打開「結帳成功」彈窗
-                this.successModalInstance.show();
+                // //打開「結帳成功」彈窗
+                // this.successModalInstance.show();
                 
             },
 

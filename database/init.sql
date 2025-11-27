@@ -1,7 +1,8 @@
 -- ==========================================
--- 超商門市庫存採購管理系統 - 資料庫初始化腳本
+-- 超商門市庫存採購管理系統 - 資料庫初始化腳本(含圖片版)
 -- ==========================================
 
+DROP DATABASE IF EXISTS store_db;
 -- 1. 建立資料庫 (如果不存在才建，避免重複報錯)
 CREATE DATABASE IF NOT EXISTS store_db;
 USE store_db;
@@ -14,8 +15,9 @@ CREATE TABLE IF NOT EXISTS Products (
     category VARCHAR(50) COMMENT '分類 (如: 鮮食/飲料/用品)',
     price INT NOT NULL COMMENT '售價',
     current_stock INT DEFAULT 0 COMMENT '當前庫存量 (核心數據)',
-    safe_stock INT DEFAULT 10 COMMENT '預設安全庫存 (可被演算法覆蓋)',
-    lead_time INT DEFAULT 2 COMMENT '補貨前置天數 (智慧演算法用)'
+    safe_stock INT DEFAULT 10 COMMENT '預設安全庫存 (演算法用)',
+    lead_time INT DEFAULT 2 COMMENT '補貨前置天數 (演算法用)',
+    image_url VARCHAR(255) COMMENT '商品圖片網址 (存 URL 字串)'
 );
 
 -- 3. 建立【銷售單主檔】 (Sales_Orders)
@@ -57,24 +59,3 @@ CREATE TABLE IF NOT EXISTS Restock_Items (
     FOREIGN KEY (restock_id) REFERENCES Restock_Orders(id) ON DELETE CASCADE,
     FOREIGN KEY (product_id) REFERENCES Products(id)
 );
-
--- ==========================================
--- 初始測試資料 (讓系統一開始有點東西可以看)
--- ==========================================
-
--- 新增幾個測試商品
-INSERT INTO Products (name, category, price, current_stock, safe_stock, lead_time) VALUES 
-('可口可樂', '飲料', 25, 5, 20, 2),
-('統一布丁', '甜點', 12, 50, 10, 1),
-('御飯糰-肉鬆', '鮮食', 30, 2, 10, 1),
-('茶葉蛋', '熟食', 10, 100, 50, 1),
-('科學麵', '零食', 10, 0, 20, 3);
-
--- 新增一筆測試銷售紀錄 (假裝有人買了東西)
--- 1. 先建訂單主檔
-INSERT INTO Sales_Orders (sale_time, total_amount, customer_tag) VALUES (NOW(), 35, '學生');
--- 2. 再建訂單明細 (假設這張單買了 1個可樂 + 1個茶葉蛋)
--- 注意：這裡假設上面的訂單 ID 是 1，商品 ID 是 1 和 4
-INSERT INTO Sales_Items (order_id, product_id, quantity, subtotal) VALUES 
-(1, 1, 1, 25),
-(1, 4, 1, 10);

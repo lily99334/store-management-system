@@ -3,7 +3,7 @@ from flask_cors import CORS
 from db_config import get_db_connection
 
 # from routes.product_api import product_bp
-# from routes.sales_api import sales_bp
+from routes.sales_api import sales_bp
 # from routes.inventory_api import inventory_bp
 # from routes.report_api import report_bp
 
@@ -17,7 +17,7 @@ CORS(app, resources={r"/*": {"origins": "*"}})
 # 這樣網址就會變成 /api/products/..., /api/sales/...
 # ------------------------------------------------------
 # app.register_blueprint(product_bp)
-# app.register_blueprint(sales_bp)
+app.register_blueprint(sales_bp)
 # app.register_blueprint(inventory_bp)
 # app.register_blueprint(report_bp)
 
