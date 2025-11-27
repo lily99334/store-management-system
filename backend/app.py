@@ -1,4 +1,5 @@
-from flask import Flask, jsonify
+import os
+from flask import Flask, jsonify, render_template, request
 from flask_cors import CORS
 from db_config import get_db_connection
 
@@ -7,7 +8,19 @@ from routes.sales_api import sales_bp
 # from routes.inventory_api import inventory_bp
 # from routes.report_api import report_bp
 
-app = Flask(__name__)
+# ==========================================
+# 設定 HTML 範本路徑 (Template Folder)
+# ==========================================
+
+# 取得目前 app.py 所在的資料夾路徑 (就是 backend)
+base_dir = os.path.abspath(os.path.dirname(__file__))
+
+# frontend 資料夾的路徑
+template_dir = os.path.join(base_dir, '..', 'frontend')
+
+# 告訴 Flask 去那裡找 HTML
+# static_folder='static' 代表圖片還是放在 backend/static
+app = Flask(__name__, template_folder=template_dir, static_folder='static')
 
 # 開啟 CORS：允許所有來源連線
 CORS(app, resources={r"/*": {"origins": "*"}}) 
@@ -21,10 +34,17 @@ app.register_blueprint(sales_bp)
 # app.register_blueprint(inventory_bp)
 # app.register_blueprint(report_bp)
 
-# --- 測試路由 (確認後端有沒有活著) ---
+# 首頁 (入口儀表板)
 @app.route('/', methods=['GET'])
-def home():
-    return "Hello! 超商系統後端伺服器已啟動！"
+def index():
+    return render_template('index.html')
+
+# POS 結帳頁面
+@app.route('/pos')
+def pos_page():
+    return render_template('pos.html')
+
+
 
 # --- 測試資料庫路由 (確認能不能連到 MySQL) ---
 @app.route('/api/test-db', methods=['GET'])

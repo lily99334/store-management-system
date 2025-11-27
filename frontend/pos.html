@@ -7,7 +7,7 @@
     
     <!-- 1. 引入 Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <!-- 自訂 CSS 區域 -->
     <style>
         /* --- 🏪 小七配色變數定義 --- */
@@ -180,13 +180,51 @@
                 font-size: 1.5rem; /* 總金額數字縮小 */
             }
         }
+        /* --- 資料夾分頁樣式 --- */
+        .folder-tabs-container {
+            /* 底部加一條線，讓標籤看起來是黏在上面的 */
+            border-bottom: 2px solid var(--seven-green);
+            padding-left: 10px; /* 左邊留一點空隙 */
+        }
+
+        .folder-tab {
+            border: 1px solid #ddd; /* 預設灰色邊框 */
+            border-bottom: none; /* 底部不要邊框，才能跟下面的線連在一起 */
+            background-color: #f8f9fa; /* 預設淺灰背景 */
+            color: #6c757d; /* 預設深灰文字 */
+            font-weight: bold;
+            padding: 10px 20px;
+            border-radius: 10px 10px 0 0; /* 只有上面兩個角是圓的 */
+            margin-right: 5px; /* 標籤之間留點空隙 */
+            transition: all 0.2s; /* 讓切換時有滑順效果 */
+            position: relative;
+            top: 2px; /* 稍微往下壓一點，蓋住底線 */
+        }
+
+        /* 滑鼠移上去的效果 */
+        .folder-tab:hover {
+            background-color: #e9ecef;
+            color: var(--seven-green);
+        }
+
+        /* 被選中時的樣式 (關鍵!) */
+        .folder-tab.active {
+            background-color:var(--seven-green); /* 背景變綠色 */
+            color:white; /* 文字變白色 */
+            border-color: var(--seven-green); /* 邊框變綠色 */
+            border-bottom: 2px solid var(--seven-green); /* 底部邊框也變綠色 */
+            z-index: 1; /* 讓它浮在最上面 */
+        }
+
         /* 模擬小七的條紋捲軸 */
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-thumb { background: #ccc; border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: var(--seven-green); }
+    
     </style>
 </head>
 <body>
+{% raw %}
 
 <div id="app" class="container-fluid p-0">
     <div class="row g-0"> <!-- g-0 代表移除欄位間距 -->
@@ -199,15 +237,35 @@
             <!-- 上半部：商品牆 (可捲動) -->
             <div class="product-section">
                 <!-- 標題 -->
-                <div class="d-flex justify-content-between align-items-center mb-4">
+                <div class="d-flex align-items-center mb-4">
+                    <!-- 回首頁按鈕 -->
+                        <a href="/" class="btn btn-outline-secondary btn-sm rounded-circle border-2 me-3" 
+                           style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;">
+                            <i class="bi bi-house-fill"></i>
+                        </a>
+                        <!-- <a href="/" class="btn btn-outline-secondary btn-sm rounded-pill border-2 me-3 px-3 fw-bold" 
+                        style="height: 40px; display: flex; align-items: center; justify-content: center; text-decoration: none;">
+                            <i class="bi bi-chevron-left me-1"></i>
+                        回首頁
+                        </a> -->
+                    <!-- 標題 -->
                     <h3 class="fw-bold text-seven-green m-0">
                         <span class="fs-2">🏪</span> 商品選擇
                     </h3>
                 </div>
+                <div class="d-flex overflow-auto folder-tabs-container" style="white-space: nowrap;">
+                    <button v-for="cat in categoryList" 
+                        key="cat"
+                        class="btn folder-tab"
+                        :class="{ 'active': selectedCategory === cat }"
+                        @click="selectedCategory = cat">
+                        {{ cat }}
+                    </button>
+                </div>
                 
                 <!-- 商品列表 (Vue 迴圈) -->
                 <div class="row g-3">
-                    <div class="col-6 col-md-4 col-lg-3" v-for="product in products" :key="product.id">
+                    <div class="col-6 col-md-4 col-lg-3" v-for="product in filteredProducts" :key="product.id">
                         <!-- @click="addToCart" 是核心互動，不要刪 -->
                         <div class="card product-card h-100 overflow-hidden border-0 shadow-sm" @click="addToCart(product)">
                             <div class="row g-0 h-100">
@@ -222,6 +280,9 @@
                                 <div class="col-8 h-100">
                                     <div class="card-body p-2 d-flex flex-column justify-content-center h-100">
                                         
+                                        <small class="text-muted fw-bold" style="font-size: 0.7rem;">
+                                            ID: {{ product.id }}
+                                        </small>
                                         <h6 class="card-title fw-bold text-dark mb-1 text-truncate" style="font-size: 0.95rem;">
                                             {{ product.name }}
                                         </h6>
@@ -245,19 +306,6 @@
                 </div>
             </div>
 
-            <!-- 下半部：手動輸入區 (固定在底部) -->
-            <!-- <div class="input-section">
-                <label class="form-label fw-bold text-muted mb-2">輸入商品編號</label>
-                <div class="input-group input-group-lg">
-                    <span class="input-group-text bg-white border-end-0">🔍</span>
-                    <input type="text" 
-                            class="form-control border-start-0" 
-                            placeholder="請輸入商品 ID (如: 1001)..."
-                            v-model="inputProductId"
-                            @keyup.enter="addProductById">
-                    <button class="btn btn-primary px-4" @click="addProductById">加入購物車</button>
-                </div>
-            </div> -->
             <div class="input-section">
                 <label class="form-label fw-bold text-muted mb-2">輸入商品編號</label>
                 <div class="input-group input-group-lg">
@@ -280,6 +328,9 @@
             <!-- 標題 -->
             <div class="cart-header d-flex justify-content-between align-items-center">
                 <h4 class="m-0">🛒 購物清單</h4>
+                <button class="btn btn-sm btn-outline-light fw-bold" @click="openOrderHistory">
+                    📋 交易紀錄
+                </button>
                 <span class="badge bg-danger rounded-pill">{{ cartTotalCount }} 件</span>
             </div>
 
@@ -515,6 +566,109 @@
         </div>
     </div>
 
+    <div class="modal fade" id="orderHistoryModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal-lg"> <div class="modal-content rounded-4 shadow border-0">
+                <div class="modal-header bg-secondary text-white">
+                    <h5 class="modal-title fw-bold">📋 交易紀錄 (最近訂單)</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-0">
+                    
+                    <div v-if="orders.length === 0" class="text-center py-5 text-muted">
+                        <div class="fs-1 mb-2">📭</div>
+                        目前沒有任何交易紀錄
+                    </div>
+
+                    <div v-else class="list-group list-group-flush" style="max-height: 60vh; overflow-y: auto;">
+    
+                        <div class="list-group-item p-0 border-bottom" v-for="order in orders" :key="order.id">
+                            
+                            <div class="p-3 d-flex justify-content-between align-items-center bg-white">
+                                <div>
+                                    <div class="d-flex align-items-center gap-2 mb-1">
+                                        <span class="badge bg-dark" style="font-size: 1rem;">#{{ order.id }}</span>
+                                        <span class="fw-bold fs-4 text-seven-green ms-2">${{ order.total_amount }}</span>
+                                        <span class="badge bg-info text-dark">{{ order.customer_tag }}</span>
+                                    </div>
+                                    <small class="text-muted">🕒 {{ formatDate(order.sale_time) }}</small>
+                                </div>
+
+                                <div class="d-flex gap-2">
+                                    <button class="btn btn-outline-secondary btn-sm" @click="toggleDetails(order)">
+                                        {{ order.showDetails ? '▲ 收起' : '📄 明細' }}
+                                    </button>
+                                    <button class="btn btn-outline-danger btn-sm fw-bold" @click="deleteOrder(order)">
+                                        🗑️ 作廢
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div v-if="order.showDetails" class="bg-light p-3 border-top inner-shadow">
+                                
+                                <div v-if="order.loading" class="text-center text-muted">
+                                    <div class="spinner-border spinner-border-sm" role="status"></div> 載入中...
+                                </div>
+
+                                <table v-else class="table table-sm table-borderless mb-0">
+                                    <thead class="text-secondary border-bottom">
+                                        <tr>
+                                            <th>商品名稱</th>
+                                            <th class="text-center">單價</th>
+                                            <th class="text-center">數量</th>
+                                            <th class="text-end">小計</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr v-for="(item, i) in order.items" :key="i">
+                                            <td>{{ item.name }}</td>
+                                            <td class="text-center text-muted">${{ item.price }}</td>
+                                            <td class="text-center fw-bold">x{{ item.quantity }}</td>
+                                            <td class="text-end">${{ item.subtotal }}</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="deleteOrderModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content rounded-4 shadow border-0">
+                <div class="modal-body p-4 text-center">
+                    
+                    <div class="mb-3 text-danger">
+                        <div style="font-size: 4rem;">🗑️</div>
+                    </div>
+
+                    <h4 class="fw-bold mb-3 text-dark">確定要作廢此訂單？</h4>
+                    
+                    <p class="text-muted mb-4">
+                        訂單編號：
+                        <span class="fw-bold text-danger fs-5" v-if="tempOrderToDelete">
+                            #<span v-text="tempOrderToDelete.id"></span>
+                        </span>
+                        <span class="small">作廢後，商品庫存將會<strong class="text-success">自動加回</strong>。</span>
+                    </p>
+                    
+
+                    <div class="d-flex justify-content-center gap-2">
+                        <button type="button" class="btn btn-light btn-lg px-4 fw-bold rounded-pill" @click="closeDeleteOrderModal">
+                            再想想
+                        </button>
+                        <button type="button" class="btn btn-danger btn-lg px-4 fw-bold rounded-pill shadow" @click="executeDeleteOrder">
+                            確認作廢
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
 </div>
 
 <!-- 引入 Vue, Axios, Bootstrap JS -->
@@ -539,19 +693,40 @@
                 removeItemModalInstance: null, // 控制彈窗
                 notFoundModalInstance: null, // 控制彈窗
                 tempInvalidId: '',           // 用來顯示剛剛輸入錯的號碼
-
+                
+                selectedCategory: '全部',   // 預設選擇 "全部" 類別
                 tempItemToRemove: null,        // 暫存要被刪除的那個商品物件
                 tempCustomerTag: '',         // 用來暫記使用者剛剛點了 "學生" 還是 "上班族"
                 lastOrder: {
                     customer: '',
                     total: 0
-                }
+                },
+                orders: [],                 // 存放所有訂單
+                orderHistoryModalInstance: null, // 控制交易紀錄彈窗
+                deleteOrderModalInstance: null, // 控制作廢彈窗
+                tempOrderToDelete: null,        // 暫存要被作廢的那張訂單物件
             }
         },
         computed: {
             // 自動計算總金額
             totalPrice() {
                 return this.cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            },
+            // 自動從商品列表中抓出所有的分類 (不重複)
+            categoryList() {
+                // 1. 先抓出所有商品的 category
+                const categories = this.products.map(p => p.category);
+                // 2. 用 Set 去除重複，然後轉回陣列
+                // 3. 在最前面加上 '全部'
+                return ['全部', ...new Set(categories)];
+            },
+            // 根據選中的分類，過濾出要顯示的商品
+            filteredProducts() {
+                if (this.selectedCategory === '全部') {
+                    return this.products; // 如果選全部，就回傳所有商品
+                }
+                // 否則只回傳符合該分類的商品
+                return this.products.filter(p => p.category === this.selectedCategory);
             },
             // 自動計算總件數
             cartTotalCount() {
@@ -571,6 +746,10 @@
             this.removeItemModalInstance = new bootstrap.Modal(document.getElementById('removeItemModal'));
             // 初始化查無商品彈窗
             this.notFoundModalInstance = new bootstrap.Modal(document.getElementById('notFoundModal'));
+            // 初始化交易紀錄彈窗
+            this.orderHistoryModalInstance = new bootstrap.Modal(document.getElementById('orderHistoryModal'));
+            // 初始化作廢彈窗
+            this.deleteOrderModalInstance = new bootstrap.Modal(document.getElementById('deleteOrderModal'));
             // TODO: 正式串接時，請把下面這行註解打開
             this.fetchProducts();
         },
@@ -669,7 +848,7 @@
                 this.removeItemModalInstance.hide();
             },
 
-            // 👇 新增：關閉彈窗 (按下保留時)
+            // 關閉彈窗 (按下保留時)
             closeRemoveItemModal() {
                 this.tempItemToRemove = null; // 清空暫存
                 this.removeItemModalInstance.hide();
@@ -793,10 +972,96 @@
             closeSuccessModal() {
                 this.successModalInstance.hide();
                 // 這裡不需要做任何事，因為購物車已經清空了，直接回到主畫面即可
-            }
+            },
+            // 1. 打開交易紀錄視窗 (並抓取最新資料)
+            openOrderHistory() {
+                this.fetchOrders(); // 先去後端抓資料
+                this.orderHistoryModalInstance.show(); // 再打開視窗
+            },
+
+            // 2. 呼叫後端 API：取得訂單列表
+            fetchOrders() {
+                axios.get('http://127.0.0.1:5000/api/sales/orders')
+                    .then(response => {
+                        this.orders = response.data;
+                    })
+                    .catch(error => {
+                        console.error("無法取得訂單:", error);
+                        alert("無法取得交易紀錄");
+                    });
+            },
+
+            // 3. 呼叫後端 API：作廢訂單
+            deleteOrder(order) {
+                this.tempOrderToDelete = order;
+                this.deleteOrderModalInstance.show();
+            },
+
+            // 使用者在作廢彈窗按下「確認作廢」時觸發
+            executeDeleteOrder() {
+
+                // 防呆檢查
+                if (!this.tempOrderToDelete) {
+                    console.error("錯誤：沒有選中任何訂單");
+                    return;
+                }
+
+                axios.delete(`http://127.0.0.1:5000/api/sales/orders/${this.tempOrderToDelete.id}`)
+                    .then(response => {
+                        // 成功後要做的事
+                        this.deleteOrderModalInstance.hide(); // 關閉視窗
+                        this.fetchOrders();   // 更新訂單列表
+                        this.fetchProducts(); // 更新商品庫存
+
+                    })
+                    .catch(error => {
+                        console.error("作廢失敗:", error);
+                        const msg = error.response?.data?.message || error.message;
+                        alert("❌ 作廢失敗：" + msg);
+                    });
+            },
+            // 關閉作廢彈窗
+            closeDeleteOrderModal() {
+                this.tempOrderToDelete = null;
+                this.deleteOrderModalInstance.hide();
+            },
+            
+            // 格式化時間的小工具 (把醜醜的 SQL 時間變好看)
+            formatDate(dateString) {
+                const date = new Date(dateString);
+                return date.toLocaleString('zh-TW', { hour12: false });
+            },
+
+            // 切換顯示/隱藏明細
+            toggleDetails(order) {
+                // 如果這張訂單已經有 items 資料且是展開狀態 -> 收起來
+                if (order.showDetails) {
+                    order.showDetails = false;
+                    return; // 結束
+                }
+
+                // 如果還沒抓過資料 -> 去後端抓
+                // 先給一個 loading 狀態
+                order.loading = true; 
+                
+                axios.get(`http://127.0.0.1:5000/api/sales/orders/${order.id}/items`)
+                    .then(response => {
+                        // Vue 3 的寫法：直接把新屬性塞進去物件裡
+                        order.items = response.data;
+                        order.showDetails = true; // 設定為展開
+                    })
+                    .catch(error => {
+                        console.error("抓取明細失敗", error);
+                        alert("無法讀取明細");
+                    })
+                    .finally(() => {
+                        order.loading = false;
+                    });
+            },
         }
     }).mount('#app')
 </script>
 
+{% endraw %}
 </body>
 </html>

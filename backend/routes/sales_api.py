@@ -114,3 +114,77 @@ def checkout():
         cursor.close()
         # 釋放資源，資料庫連線數滿了會出問題
         conn.close()
+
+# --- 新增：取得所有交易紀錄 ---
+@sales_bp.route('/api/sales/orders', methods=['GET'])
+def get_recent_orders():
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    # 按時間倒序
+    cursor.execute("SELECT * FROM Sales_Orders ORDER BY sale_time DESC LIMIT 50")
+    orders = cursor.fetchall()
+    conn.close()
+    return jsonify(orders)
+
+# --- 新增：作廢訂單 (這段邏輯最重要！) ---
+@sales_bp.route('/api/sales/orders/<int:order_id>', methods=['DELETE'])
+def delete_order(order_id):
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    
+    try:
+        conn.start_transaction()
+
+        # 1. 先查出這張單買了什麼商品、買了幾個 (為了把庫存加回去)
+        sql_get_items = "SELECT product_id, quantity FROM Sales_Items WHERE order_id = %s"
+        cursor.execute(sql_get_items, (order_id,))
+        items = cursor.fetchall()
+
+        if not items:
+            raise Exception("找不到訂單或訂單無明細")
+
+        # 2. 把庫存加回去 (歸還庫存)
+        sql_restore_stock = "UPDATE Products SET current_stock = current_stock + %s WHERE id = %s"
+        for item in items:
+            cursor.execute(sql_restore_stock, (item['quantity'], item['product_id']))
+            print(f"訂單作廢：商品 {item['product_id']} 庫存已歸還 {item['quantity']} 個")
+
+        # 3. 刪除明細 (因為有設 Foreign Key CASCADE，其實刪主檔就會自動刪明細，但保險起見)
+        cursor.execute("DELETE FROM Sales_Items WHERE order_id = %s", (order_id,))
+
+        # 4. 刪除主檔
+        cursor.execute("DELETE FROM Sales_Orders WHERE id = %s", (order_id,))
+
+        conn.commit()
+        return jsonify({"status": "success", "message": "訂單已作廢，庫存已歸還"})
+
+    except Exception as e:
+        conn.rollback()
+        print("作廢失敗:", e)
+        return jsonify({"status": "error", "message": str(e)}), 500
+    finally:
+        conn.close()
+
+@sales_bp.route('/api/sales/orders/<int:order_id>/items', methods=['GET'])
+def get_order_items(order_id):
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    
+    try:
+        # 這裡要做 JOIN，因為 Sales_Items 只有 product_id，我們要連去 Products 抓名稱 (name)
+        sql = """
+            SELECT si.quantity, si.subtotal, p.name, p.price 
+            FROM Sales_Items si
+            JOIN Products p ON si.product_id = p.id
+            WHERE si.order_id = %s
+        """
+        cursor.execute(sql, (order_id,))
+        items = cursor.fetchall()
+        
+        return jsonify(items)
+        
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+    finally:
+        cursor.close()
+        conn.close()
