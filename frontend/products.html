@@ -39,7 +39,7 @@
                     <td>[[ p.id ]]</td>
                     <td>
                         <img :src="p.image_url" v-if="p.image_url" style="width: 40px; height: 40px; object-fit: cover;"
-                            class="rounded">
+                            class="rounded border">
                         <span v-else class="text-muted small">無</span>
                     </td>
                     <td class="fw-bold">[[ p.name ]]</td>
@@ -81,10 +81,17 @@
                             <div class="col"><label>補貨天數</label><input v-model.number="temp.lead_time" type="number"
                                     class="form-control"></div>
                         </div>
+                        
                         <div class="mb-2">
-                            <label>圖片網址</label>
-                            <input v-model="temp.image_url" class="form-control" placeholder="http://...">
+                            <label>商品圖片</label>
+                            <input type="file" class="form-control" @change="handleFileUpload" accept="image/*">
+                            
+                            <div class="mt-2 text-center" v-if="previewImage">
+                                <span class="text-muted small d-block mb-1">預覽：</span>
+                                <img :src="previewImage" style="max-height: 150px; border-radius: 5px;">
+                            </div>
                         </div>
+
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-primary w-100" @click="saveProduct">儲存</button>
@@ -100,7 +107,16 @@
         const { createApp } = Vue
         createApp({
             delimiters: ['[[', ']]'],
-            data() { return { products: [], temp: {}, modal: null, isEdit: false } },
+            data() { 
+                return { 
+                    products: [], 
+                    temp: {}, 
+                    modal: null, 
+                    isEdit: false,
+                    selectedFile: null, // 存使用者選的檔案
+                    previewImage: null  // 存預覽圖網址
+                } 
+            },
             mounted() {
                 this.modal = new bootstrap.Modal(document.getElementById('productModal'));
                 this.fetchProducts();
@@ -111,33 +127,66 @@
                 },
                 openModal(type, product) {
                     this.isEdit = (type === 'edit');
+                    this.selectedFile = null; // 重置檔案
+                    
                     if (this.isEdit) {
-                        this.temp = { ...product }; // 複製一份，避免改到一半影響列表
+                        this.temp = { ...product };
+                        this.previewImage = product.image_url; // 編輯時先顯示舊圖
                     } else {
-                        this.temp = { current_stock: 0, safe_stock: 10, lead_time: 2 }; // 預設值
+                        this.temp = { current_stock: 0, safe_stock: 10, lead_time: 2 };
+                        this.previewImage = null;
                     }
+                    
+                    // 清空檔案輸入框的值 (避免選同一個檔案沒反應)
+                    const fileInput = document.querySelector('input[type="file"]');
+                    if(fileInput) fileInput.value = '';
+                    
                     this.modal.show();
                 },
+                // 🔥 當使用者選檔案時觸發
+                handleFileUpload(event) {
+                    const file = event.target.files[0];
+                    if (file) {
+                        this.selectedFile = file;
+                        // 產生本機預覽網址
+                        this.previewImage = URL.createObjectURL(file);
+                    }
+                },
                 saveProduct() {
+                    // 🔥 建立 FormData 物件 (這是上傳檔案的關鍵)
+                    let formData = new FormData();
+                    formData.append('name', this.temp.name || '');
+                    formData.append('category', this.temp.category || '');
+                    formData.append('price', this.temp.price || 0);
+                    formData.append('safe_stock', this.temp.safe_stock || 10);
+                    formData.append('lead_time', this.temp.lead_time || 2);
+                    
+                    // 如果有選新檔案，就放檔案；沒有的話，把舊網址傳回去
+                    if (this.selectedFile) {
+                        formData.append('image_file', this.selectedFile);
+                    } else {
+                        formData.append('image_url', this.temp.image_url || '');
+                    }
+
                     if (this.isEdit) {
-                        // 編輯模式 (PUT)
-                        axios.put(`/api/products/${this.temp.id}`, this.temp)
+                        // 編輯 (PUT)
+                        formData.append('current_stock', this.temp.current_stock);
+                        axios.put(`/api/products/${this.temp.id}`, formData)
                             .then(() => { this.modal.hide(); this.fetchProducts(); })
                             .catch(err => alert("更新失敗: " + err.message));
                     } else {
-                        // 新增模式 (POST)
-                        axios.post('/api/products', this.temp)
+                        // 新增 (POST)
+                        formData.append('current_stock', this.temp.current_stock || 0);
+                        axios.post('/api/products', formData)
                             .then(() => { this.modal.hide(); this.fetchProducts(); })
                             .catch(err => alert("新增失敗: " + err.message));
                     }
                 },
                 deleteProduct(id) {
                     if (!confirm('確定刪除？')) return;
-
                     axios.delete(`/api/products/${id}`)
                         .then(() => this.fetchProducts())
                         .catch(err => {
-                            // 3. 顯示後端傳回來的錯誤訊息 (例如：已賣過不能刪)
                             if (err.response && err.response.data && err.response.data.message) {
                                 alert("❌ 刪除失敗：\n" + err.response.data.message);
                             } else {

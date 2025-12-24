@@ -19,8 +19,31 @@
                 <a href="/" class="btn btn-outline-secondary">⬅️ 回首頁</a>
                 <h2 class="m-0">💰 銷售紀錄 (帳本)</h2>
             </div>
-            <div class="h5 m-0 text-success">
-                今日總營收: $[[ totalRevenue ]]
+            
+            <div class="text-end">
+                <div class="small text-muted">[[ dateRangeText ]]</div>
+                <div class="h4 m-0 text-success fw-bold">
+                    營收: $[[ totalRevenue ]]
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm border-0 mb-3 p-3">
+            <div class="d-flex flex-wrap align-items-center gap-2">
+                <label class="fw-bold">📅 篩選區間：</label>
+                
+                <input type="date" class="form-control w-auto" v-model="startDate" title="起始日期">
+                <span>～</span>
+                <input type="date" class="form-control w-auto" v-model="endDate" title="結束日期">
+
+                <button class="btn btn-outline-secondary btn-sm ms-2" 
+                    @click="clearFilter" 
+                    v-if="startDate || endDate">
+                    清除篩選
+                </button>
+                
+                <button class="btn btn-outline-primary btn-sm ms-auto" @click="setToday">今天</button>
+                <button class="btn btn-outline-primary btn-sm" @click="setThisMonth">這個月</button>
             </div>
         </div>
 
@@ -38,13 +61,12 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <tr v-for="order in orders" :key="order.id">
+                        <tr v-for="order in filteredOrders" :key="order.id">
                             <td class="ps-4 text-muted">#[[ order.id ]]</td>
                             <td class="small">[[ formatDate(order.created_at) ]]</td>
                             <td>
-                                <span class="badge"
-                                    :class="order.customer_type === 'Student' ? 'bg-info' : 'bg-secondary'">
-                                    [[ order.customer_type === 'Student' ? '學生' : '一般' ]]
+                                <span class="badge" :class="getBadgeClass(order.customer_type)">
+                                    [[ translateType(order.customer_type) ]]
                                 </span>
                             </td>
                             <td class="text-truncate" style="max-width: 300px;">[[ order.details ]]</td>
@@ -53,8 +75,11 @@
                                 <button class="btn btn-sm btn-outline-danger" @click="refund(order.id)">作廢/退款</button>
                             </td>
                         </tr>
-                        <tr v-if="orders.length === 0">
-                            <td colspan="6" class="text-center py-5 text-muted">目前沒有銷售紀錄</td>
+                        <tr v-if="filteredOrders.length === 0">
+                            <td colspan="6" class="text-center py-5 text-muted">
+                                <div class="fs-1 mb-2">🔍</div>
+                                [[ (startDate || endDate) ? '這個區間沒有銷售紀錄喔' : '目前沒有銷售紀錄' ]]
+                            </td>
                         </tr>
                     </tbody>
                 </table>
@@ -69,13 +94,53 @@
             delimiters: ['[[', ']]'],
             data() {
                 return {
-                    orders: []
+                    orders: [],
+                    startDate: '', // 起始日
+                    endDate: ''    // 結束日
                 }
             },
             computed: {
+                // 🔥 核心邏輯：範圍過濾
+                filteredOrders() {
+                    // 如果都沒選，回傳全部
+                    if (!this.startDate && !this.endDate) {
+                        return this.orders;
+                    }
+
+                    return this.orders.filter(order => {
+                        // 1. 把訂單時間轉成 YYYY-MM-DD 字串方便比對
+                        const orderDate = new Date(order.created_at);
+                        const yyyy = orderDate.getFullYear();
+                        const mm = String(orderDate.getMonth() + 1).padStart(2, '0');
+                        const dd = String(orderDate.getDate()).padStart(2, '0');
+                        const orderDateStr = `${yyyy}-${mm}-${dd}`;
+                        
+                        // 2. 比對邏輯
+                        let passStart = true;
+                        let passEnd = true;
+
+                        if (this.startDate) {
+                            passStart = (orderDateStr >= this.startDate);
+                        }
+                        if (this.endDate) {
+                            passEnd = (orderDateStr <= this.endDate);
+                        }
+
+                        return passStart && passEnd;
+                    });
+                },
                 totalRevenue() {
-                    // 簡單計算畫面上的總金額
-                    return this.orders.reduce((sum, order) => sum + order.total_price, 0);
+                    return this.filteredOrders.reduce((sum, order) => sum + order.total_price, 0);
+                },
+                dateRangeText() {
+                    if (this.startDate && this.endDate) {
+                        return `${this.startDate} ~ ${this.endDate}`;
+                    } else if (this.startDate) {
+                        return `${this.startDate} 之後`;
+                    } else if (this.endDate) {
+                        return `${this.endDate} 之前`;
+                    }
+                    return '總累積紀錄';
                 }
             },
             mounted() {
@@ -87,9 +152,33 @@
                         this.orders = res.data;
                     });
                 },
+                clearFilter() {
+                    this.startDate = '';
+                    this.endDate = '';
+                },
+                // 🔥 快速設定：今天
+                setToday() {
+                    const today = new Date();
+                    const str = this.toISODate(today);
+                    this.startDate = str;
+                    this.endDate = str;
+                },
+                // 🔥 快速設定：這個月 (月初到今天)
+                setThisMonth() {
+                    const today = new Date();
+                    const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+                    this.startDate = this.toISODate(firstDay);
+                    this.endDate = this.toISODate(today);
+                },
+                // 輔助函式：轉成 YYYY-MM-DD
+                toISODate(dateObj) {
+                    const yyyy = dateObj.getFullYear();
+                    const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
+                    const dd = String(dateObj.getDate()).padStart(2, '0');
+                    return `${yyyy}-${mm}-${dd}`;
+                },
                 refund(id) {
                     if (!confirm(`確定要作廢訂單 #${id} 嗎？\n⚠️ 錢會扣掉，商品庫存會加回去！`)) return;
-
                     axios.delete(`/api/sales/orders/${id}`)
                         .then(() => {
                             alert("已作廢成功！");
@@ -99,6 +188,23 @@
                 },
                 formatDate(str) {
                     return str ? new Date(str).toLocaleString('zh-TW', { hour12: false }) : '';
+                },
+                translateType(type) {
+                    const map = {
+                        'Under 20': '學生 (20歲以下)',
+                        '20-40': '青壯年 (20-40歲)',
+                        '40-60': '中年 (40-60歲)',
+                        'Over 60': '銀髮族 (60歲以上)',
+                        'General': '一般'
+                    };
+                    return map[type] || type || '一般';
+                },
+                getBadgeClass(type) {
+                    if (type === 'Under 20') return 'bg-info text-dark'; 
+                    if (type === '20-40') return 'bg-success';
+                    if (type === '40-60') return 'bg-warning text-dark';
+                    if (type === 'Over 60') return 'bg-secondary';
+                    return 'bg-secondary';
                 }
             }
         }).mount('#app')
