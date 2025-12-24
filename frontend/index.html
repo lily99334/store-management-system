@@ -1,140 +1,118 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>超商門市庫存採購管理系統 - 首頁</title>
+    <title>門市管理系統</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        /* --- 🏪 小七配色變數定義 --- */
-        :root {
-            --seven-green: #008162;  /* 招牌綠 */
-            --seven-orange: #F58320; /* 活力橘 */
-            --seven-red: #EE2E24;    /* 警示紅 */
-        }
-
-        /* 讓卡片滑鼠移過去有浮起來的特效 */
-        .menu-card {
-            transition: all 0.3s ease;
+        /* 讓卡片有點懸浮效果，比較有質感 */
+        .module-card {
+            transition: transform 0.2s, box-shadow 0.2s;
             cursor: pointer;
-            border: 2px solid transparent; /* 預設透明邊框 */
-            border-radius: 15px;
-            background-color: white;
-        }
-        
-        /* 滑鼠懸停效果 */
-        .menu-card:hover {
-            transform: translateY(-8px);
-            box-shadow: 0 15px 30px rgba(0,0,0,0.1);
+            height: 100%;
+            /* 確保高度一致 */
         }
 
-        .icon-box {
-            font-size: 3.5rem;
-            margin-bottom: 15px;
+        .module-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 .5rem 1rem rgba(0, 0, 0, .15) !important;
         }
 
-        /* 按鈕樣式 */
-        .btn-action {
-            border-radius: 50px;
-            font-weight: bold;
-            padding: 10px 25px;
-            transition: all 0.2s;
+        .icon-lg {
+            font-size: 3rem;
+            /*稍微縮小圖示，適應 5 排佈局*/
+            margin-bottom: 0.5rem;
         }
 
-        /* --- 自訂顏色類別 --- */
-        
-        /* 1. 商品管理 (藍色 -> 改成深灰/輔助色) */
-        .card-product:hover { border-color: #6c757d; }
-        .text-product { color: #6c757d; }
-        .btn-product { color: #6c757d; border-color: #6c757d; }
-        .btn-product:hover { background-color: #6c757d; color: white; }
-
-        /* 2. 前台 POS (招牌綠) */
-        .card-pos:hover { border-color: var(--seven-green); }
-        .text-pos { color: var(--seven-green); }
-        .btn-pos { color: var(--seven-green); border-color: var(--seven-green); }
-        .btn-pos:hover { background-color: var(--seven-green); color: white; }
-
-        /* 3. 進貨管理 (活力橘) */
-        .card-inventory:hover { border-color: var(--seven-orange); }
-        .text-inventory { color: var(--seven-orange); }
-        .btn-inventory { color: var(--seven-orange); border-color: var(--seven-orange); }
-        .btn-inventory:hover { background-color: var(--seven-orange); color: white; }
-
-        /* 4. 智慧決策 (警示紅) */
-        .card-report:hover { border-color: var(--seven-red); }
-        .text-report { color: var(--seven-red); }
-        .btn-report { color: var(--seven-red); border-color: var(--seven-red); }
-        .btn-report:hover { background-color: var(--seven-red); color: white; }
-
+        .card-body {
+            padding: 1.5rem 1rem;
+            /* 調整內距 */
+        }
     </style>
 </head>
+
 <body class="bg-light">
 
-    <!-- 頂部導覽列 (裝飾用) -->
-    <nav class="navbar" style="background-color: var(--seven-green); border-bottom: 5px solid var(--seven-orange);">
-        <div class="container text-white py-2">
-            <span class="fw-bold fs-4">🏪 Store Management System</span>
-            <small>v1.0</small>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-success mb-5 shadow-sm">
+        <div class="container-fluid px-5">
+            <a class="navbar-brand fw-bold" href="#">🏪 Store Management System</a>
+            <span class="navbar-text text-white-50">v1.0</span>
         </div>
     </nav>
 
-    <div class="container py-5">
+    <div class="container-fluid px-5">
         <div class="text-center mb-5">
-            <h2 class="fw-bold text-dark">歡迎使用門市管理系統</h2>
+            <h1 class="fw-bold text-dark">歡迎使用門市管理系統</h1>
             <p class="text-muted">請選擇您要操作的模組</p>
         </div>
-        
-        <div class="row g-4 justify-content-center">
-            
-            <!-- 📦 商品管理 -->
-            <div class="col-md-6 col-lg-3">
-                <div class="card h-100 menu-card card-product text-center p-4 shadow-sm" onclick="location.href='/products'">
-                    <div class="icon-box text-product">📦</div>
-                    <h4 class="card-title fw-bold text-product">商品管理</h4>
-                    <p class="card-text text-muted small mb-4">建立與維護商品資料</p>
-                    <a href="#" class="btn btn-outline-secondary btn-action mt-auto">進入模組</a>
-                </div>
-            </div>
-            
-            <!-- 🛒 前台 POS (你的部分) -->
-            <div class="col-md-6 col-lg-3">
-                <!-- 注意：這裡連結改成 /pos (對應你的 Flask 路由) -->
-                <div class="card h-100 menu-card card-pos text-center p-4 shadow-sm" onclick="location.href='/pos'">
-                    <div class="icon-box text-pos">🛒</div>
-                    <h4 class="card-title fw-bold text-pos">前台 POS</h4>
-                    <p class="card-text text-muted small mb-4">收銀結帳與客層紀錄</p>
-                    <a href="/pos" class="btn btn-pos btn-action mt-auto">開始結帳</a>
+
+        <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-5 g-3 justify-content-center">
+
+            <div class="col">
+                <div class="card shadow-sm border-0 module-card text-center" onclick="location.href='/products'">
+                    <div class="card-body">
+                        <div class="icon-lg">📦</div>
+                        <h5 class="card-title fw-bold">商品管理</h5>
+                        <p class="card-text text-muted small">商品資料維護<br>庫存設定</p>
+                        <a href="/products" class="btn btn-sm btn-outline-secondary rounded-pill w-100 mt-2">進入模組</a>
+                    </div>
                 </div>
             </div>
 
-            <!-- 🚚 進貨管理 -->
-            <div class="col-md-6 col-lg-3">
-                <div class="card h-100 menu-card card-inventory text-center p-4 shadow-sm" onclick="location.href='/inventory'">
-                    <div class="icon-box text-inventory">🚚</div>
-                    <h4 class="card-title fw-bold text-inventory">進貨管理</h4>
-                    <p class="card-text text-muted small mb-4">處理進貨驗收作業</p>
-                    <a href="#" class="btn btn-inventory btn-action mt-auto">新增進貨</a>
+            <div class="col">
+                <div class="card shadow-sm border-0 module-card text-center" onclick="location.href='/pos'">
+                    <div class="card-body">
+                        <div class="icon-lg">🛒</div>
+                        <h5 class="card-title fw-bold">前台 POS</h5>
+                        <p class="card-text text-muted small">收銀結帳<br>自動扣庫存</p>
+                        <a href="/pos" class="btn btn-sm btn-outline-success rounded-pill w-100 mt-2">開始結帳</a>
+                    </div>
                 </div>
             </div>
 
-            <!-- 📊 智慧決策 -->
-            <div class="col-md-6 col-lg-3">
-                <div class="card h-100 menu-card card-report text-center p-4 shadow-sm" onclick="location.href='/report'">
-                    <div class="icon-box text-report">📊</div>
-                    <h4 class="card-title fw-bold text-report">智慧決策</h4>
-                    <p class="card-text text-muted small mb-4">補貨建議與滯銷預警</p>
-                    <a href="#" class="btn btn-report btn-action mt-auto">查看報表</a>
+            <div class="col">
+                <div class="card shadow-sm border-0 module-card text-center" onclick="location.href='/inventory'">
+                    <div class="card-body">
+                        <div class="icon-lg">🚚</div>
+                        <h5 class="card-title fw-bold text-warning">進貨管理</h5>
+                        <p class="card-text text-muted small">庫存補貨<br>緊急進貨建議</p>
+                        <a href="/inventory" class="btn btn-sm btn-outline-warning rounded-pill w-100 mt-2">新增進貨</a>
+                    </div>
                 </div>
             </div>
-            
+
+            <div class="col">
+                <div class="card shadow-sm border-0 module-card text-center" onclick="location.href='/report'">
+                    <div class="card-body">
+                        <div class="icon-lg">📊</div>
+                        <h5 class="card-title fw-bold text-danger">智慧決策</h5>
+                        <p class="card-text text-muted small">紅燈警示<br>滯銷分析</p>
+                        <a href="/report" class="btn btn-sm btn-outline-danger rounded-pill w-100 mt-2">查看報表</a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col">
+                <div class="card shadow-sm border-0 module-card text-center" onclick="location.href='/sales_history'">
+                    <div class="card-body">
+                        <div class="icon-lg">💰</div>
+                        <h5 class="card-title fw-bold text-primary">銷售紀錄</h5>
+                        <p class="card-text text-muted small">查看營收<br>訂單作廢</p>
+                        <a href="/sales_history" class="btn btn-sm btn-outline-primary rounded-pill w-100 mt-2">查看帳本</a>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="text-center mt-5 text-muted small">
+            &copy; 2025 超商門市庫存採購管理系統專題小組. All Rights Reserved.
         </div>
     </div>
 
-    <!-- 頁尾 -->
-    <div class="text-center py-4 text-muted small mt-5">
-        &copy; 2025 超商門市庫存採購管理系統專題小組. All Rights Reserved.
-    </div>
-
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
+
 </html>

@@ -1,1067 +1,281 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>前台收銀系統 (POS)</title>
-    
-    <!-- 1. 引入 Bootstrap 5 CSS -->
+    <title>前台 POS 收銀系統</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <!-- 自訂 CSS 區域 -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <style>
-        /* --- 🏪 小七配色變數定義 --- */
-        :root {
-            --seven-green: #008162;  /* 招牌綠 */
-            --seven-orange: #F58320; /* 活力橘 */
-            --seven-red: #EE2E24;    /* 警示紅 */
-        }
-
-        /* --- 自訂小七工具類別 --- */
-        .text-seven-green { color: var(--seven-green) !important; }
-        .text-seven-orange { color: var(--seven-orange) !important; }
-        .bg-seven-green { background-color: var(--seven-green) !important; }
-        .bg-seven-orange { background-color: var(--seven-orange) !important; }
-
-        /* 綠色按鈕 (用於結帳、主要操作) */
-        .btn-seven-green {
-            background-color: var(--seven-green);
-            border-color: var(--seven-green);
-            color: white;
-        }
-        .btn-seven-green:hover {
-            background-color: #00634a; /* 深一點的綠 */
-            color: white;
-        }
-
-        /* 橘色按鈕 (用於加入、次要操作) */
-        .btn-seven-orange {
-            background-color: var(--seven-orange);
-            border-color: var(--seven-orange);
-            color: white;
-        }
-        .btn-seven-orange:hover {
-            background-color: #d96e11; /* 深一點的橘 */
-            color: white;
-        }
-
-        /* --- 全域設定 --- */
-        body {
-            background-color: #f4f6f9; /* 整體背景色 */
+        /* 讓網頁像 APP 一樣固定高度，不出現最外層捲軸 */
+        body,
+        html {
             height: 100vh;
-            overflow: hidden; /* 防止整個頁面捲動 */
-        }
-
-        /* --- 左側：商品牆與輸入區容器 --- */
-        .left-panel {
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
-        }
-
-        /* --- 商品牆樣式 --- */
-        .product-section {
-            flex-grow: 1; /* 佔滿剩餘空間 */
-            overflow-y: auto; /* 讓商品多時可以捲動 */
-            padding: 20px;
-            /* 背景稍微帶一點點橘色調的灰，比較溫暖 */
-            background-color: #fffaf5;
-        }
-
-        /* --- 底部輸入區樣式 --- */
-        .input-section {
-            background-color: white;
-            padding: 20px;
-            border-top: 4px solid var(--seven-orange); /* 頂部加一條橘色線條裝飾 */
-            box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
-        }
-
-        .product-card {
-            cursor: pointer;
-            transition: all 0.2s;
-            border: 1px solid #eee; /* 加上淡淡邊框 */
-            border-radius: 15px; /* 圓角 */
-            background: white;
-            height: 120px !important; 
-            min-height: 120px !important;
-            max-height: 120px !important;
             overflow: hidden;
         }
 
-        .product-card:hover {
-            transform: translateY(-5px); /* 滑鼠移過去浮起來 */
-            box-shadow: 0 10px 20px rgba(0,129,98,0.15); /* 陰影改成綠色調 */
-            border: 2px solid var(--seven-green); /* 選中時的框線顏色 */
-        }
-        .product-card:active { transform: scale(0.98); }
-
-        .product-price {
-            color: var(--seven-red); /* 價格用小七紅 */
-            font-weight: bold;
-            font-size: 1.2rem;
-        }
-
-        /* --- 右側：購物車樣式 --- */
-        .cart-section {
+        #app {
             height: 100vh;
-            background-color: white;
-            border-left: 1px solid #ddd;
             display: flex;
             flex-direction: column;
-            box-shadow: -5px 0 15px rgba(0,0,0,0.05);
+        }
+
+        /* 主要內容區塊自動填滿剩餘空間 */
+        .main-content {
+            flex: 1;
+            overflow: hidden;
+            padding-bottom: 10px;
+        }
+
+        /* 左邊商品區：獨立捲軸 */
+        .product-area {
+            height: 100%;
+            overflow-y: auto;
+            padding-right: 5px;
+        }
+
+        /* 右邊購物車區：卡片填滿高度，內容自適應 */
+        .cart-area {
+            height: 100%;
+        }
+
+        .cart-card {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
         }
 
         .cart-header {
-            /* 改成招牌綠背景 */
-            background-color: var(--seven-green);
-            /* background-color: #212529; 購物車標題背景 (黑) */
-            color: white;
-            padding: 15px;
-            /* 加上橘色條紋裝飾 (模擬制服/Logo) */
-            border-bottom: 5px solid var(--seven-orange);
-        }
-
-        .cart-list {
-            flex-grow: 1; /* 佔滿剩餘空間 */
-            overflow-y: auto; /* 購物車太長時可捲動 */
-            padding: 10px;
+            flex-shrink: 0;
         }
 
         .cart-footer {
-            background-color: #f8f9fa;
-            padding: 20px;
-            border-top: 2px solid #dee2e6;
+            flex-shrink: 0;
         }
 
-        /* 結帳按鈕特效 */
-        .btn-checkout {
-            height: 60px;
-            font-size: 1.5rem;
-            font-weight: bold;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        /* 購物車列表：佔據中間剩餘空間，獨立捲軸 */
+        .cart-panel {
+            flex: 1;
+            overflow-y: auto;
+            background-color: #fff;
         }
 
-       /* 針對小螢幕優化 */
-        @media (max-width: 1000px) {
-            
-            .left-panel {
-                width: 55% !important; 
-            }
-            .cart-section {
-                width: 45% !important;
-            }
-
-            /* 縮小整體字體 */
-            body {
-                font-size: 0.9rem;
-            }
-            
-            /* 商品牆改為一列顯示 2 個 */
-            .product-section .col-lg-3 {
-                width: 50%; 
-            }
-            
-            /* 字體稍微縮小一點點，避免爆版 */
-            .product-price { font-size: 1rem; }
-            .card-title { font-size: 1rem; margin-bottom: 0.2rem !important; }
-
-            /* 隱藏部分非必要資訊以節省空間 */
-            .input-section .form-label {
-                display: none; /* 隱藏「手動輸入...」那行文字 */
-            }
-
-            /* 調整結帳按鈕高度 */
-            .btn-checkout {
-                height: 50px;
-                font-size: 1.2rem;
-            }
-            
-            .display-5 {
-                font-size: 1.5rem; /* 總金額數字縮小 */
-            }
-        }
-        /* --- 資料夾分頁樣式 --- */
-        .folder-tabs-container {
-            /* 底部加一條線，讓標籤看起來是黏在上面的 */
-            border-bottom: 2px solid var(--seven-green);
-            padding-left: 10px; /* 左邊留一點空隙 */
+        /* 商品卡片樣式 */
+        .product-card {
+            cursor: pointer;
+            transition: 0.2s;
         }
 
-        .folder-tab {
-            border: 1px solid #ddd; /* 預設灰色邊框 */
-            border-bottom: none; /* 底部不要邊框，才能跟下面的線連在一起 */
-            background-color: #f8f9fa; /* 預設淺灰背景 */
-            color: #6c757d; /* 預設深灰文字 */
-            font-weight: bold;
-            padding: 10px 20px;
-            border-radius: 10px 10px 0 0; /* 只有上面兩個角是圓的 */
-            margin-right: 5px; /* 標籤之間留點空隙 */
-            transition: all 0.2s; /* 讓切換時有滑順效果 */
-            position: relative;
-            top: 2px; /* 稍微往下壓一點，蓋住底線 */
+        .product-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
         }
-
-        /* 滑鼠移上去的效果 */
-        .folder-tab:hover {
-            background-color: #e9ecef;
-            color: var(--seven-green);
-        }
-
-        /* 被選中時的樣式 (關鍵!) */
-        .folder-tab.active {
-            background-color:var(--seven-green); /* 背景變綠色 */
-            color:white; /* 文字變白色 */
-            border-color: var(--seven-green); /* 邊框變綠色 */
-            border-bottom: 2px solid var(--seven-green); /* 底部邊框也變綠色 */
-            z-index: 1; /* 讓它浮在最上面 */
-        }
-
-        /* 模擬小七的條紋捲軸 */
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-thumb { background: #ccc; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: var(--seven-green); }
-    
     </style>
 </head>
-<body>
-{% raw %}
 
-<div id="app" class="container-fluid p-0">
-    <div class="row g-0"> <!-- g-0 代表移除欄位間距 -->
-        
-        <!-- ========================== -->
-        <!-- 🟢 左側：商品牆 + 底部輸入區 -->
-        <!-- ========================== -->
-        <div class="col-7 col-md-8 left-panel">
-            
-            <!-- 上半部：商品牆 (可捲動) -->
-            <div class="product-section">
-                <!-- 標題 -->
-                <div class="d-flex align-items-center mb-4">
-                    <!-- 回首頁按鈕 -->
-                        <a href="/" class="btn btn-outline-secondary btn-sm rounded-circle border-2 me-3" 
-                           style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;">
-                            <i class="bi bi-house-fill"></i>
-                        </a>
-                        <!-- <a href="/" class="btn btn-outline-secondary btn-sm rounded-pill border-2 me-3 px-3 fw-bold" 
-                        style="height: 40px; display: flex; align-items: center; justify-content: center; text-decoration: none;">
-                            <i class="bi bi-chevron-left me-1"></i>
-                        回首頁
-                        </a> -->
-                    <!-- 標題 -->
-                    <h3 class="fw-bold text-seven-green m-0">
-                        <span class="fs-2">🏪</span> 商品選擇
-                    </h3>
-                </div>
-                <div class="d-flex overflow-auto folder-tabs-container" style="white-space: nowrap;">
-                    <button v-for="cat in categoryList" 
-                        key="cat"
-                        class="btn folder-tab"
-                        :class="{ 'active': selectedCategory === cat }"
-                        @click="selectedCategory = cat">
-                        {{ cat }}
-                    </button>
-                </div>
-                
-                <!-- 商品列表 (Vue 迴圈) -->
-                <div class="row g-3">
-                    <div class="col-6 col-md-4 col-lg-3" v-for="product in filteredProducts" :key="product.id">
-                        <!-- @click="addToCart" 是核心互動，不要刪 -->
-                        <div class="card product-card h-100 overflow-hidden border-0 shadow-sm" @click="addToCart(product)">
-                            <div class="row g-0 h-100">
-                                
-                                <div class="col-4 bg-light d-flex align-items-center justify-content-center p-0 h-100">
-                                    <img :src="product.image_url"
-                                        class="img-fluid" 
-                                        style="width: 100%; height: 100%; object-fit: cover;" 
-                                        alt="商品圖">
-                                </div>
-                                
-                                <div class="col-8 h-100">
-                                    <div class="card-body p-2 d-flex flex-column justify-content-center h-100">
-                                        
-                                        <small class="text-muted fw-bold" style="font-size: 0.7rem;">
-                                            ID: {{ product.id }}
-                                        </small>
-                                        <h6 class="card-title fw-bold text-dark mb-1 text-truncate" style="font-size: 0.95rem;">
-                                            {{ product.name }}
-                                        </h6>
-                                        
-                                        <div class="mb-1">
-                                            <span class="badge bg-secondary opacity-75" style="font-size: 0.8rem;">{{ product.category }}</span>
-                                        </div>
+<body class="bg-light">
 
-                                        <div class="d-flex justify-content-between align-items-end mt-auto">
-                                            <span class="text-danger fw-bold">${{ product.price }}</span>
-                                            
-                                            <small v-if="product.current_stock <= 0" class="text-danger fw-bold" style="font-size: 0.8rem;">
-                                                ⚠️補貨
-                                            </small>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+    {% raw %}
+    <div id="app" class="container-fluid py-3">
+
+        <div class="d-flex justify-content-between align-items-center mb-3 flex-shrink-0">
+            <div class="d-flex align-items-center gap-3">
+                <a href="/" class="btn btn-outline-secondary">⬅️ 回首頁</a>
+                <h3 class="m-0 fw-bold">🏪 前台 POS 收銀</h3>
             </div>
-
-            <div class="input-section">
-                <label class="form-label fw-bold text-muted mb-2">輸入商品編號</label>
-                <div class="input-group input-group-lg">
-                    <input type="text" 
-                            class="form-control" 
-                            placeholder="請輸入商品 ID (如: 1001)..."
-                            v-model="inputProductId"
-                            @keyup.enter="addProductById">
-                            
-                    <button class="btn btn-seven-orange fw-bold px-4" @click="addProductById">加入購物車</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- ========================== -->
-        <!-- 🛒 右側：購物車 (佔 4/12) -->
-        <!-- ========================== -->
-        <div class="col-5 col-md-4 cart-section">
-            
-            <!-- 標題 -->
-            <div class="cart-header d-flex justify-content-between align-items-center">
-                <h4 class="m-0">🛒 購物清單</h4>
-                <button class="btn btn-sm btn-outline-light fw-bold" @click="openOrderHistory">
-                    📋 交易紀錄
+            <div style="overflow-x: auto; white-space: nowrap; max-width: 50%;">
+                <button class="btn btn-sm me-1" :class="filterCat === 'all' ? 'btn-dark' : 'btn-outline-dark'"
+                    @click="filterCat = 'all'">全部</button>
+                <button v-for="cat in categories" :key="cat" class="btn btn-sm me-1"
+                    :class="filterCat === cat ? 'btn-dark' : 'btn-outline-dark'" @click="filterCat = cat">
+                    [[ cat ]]
                 </button>
-                <span class="badge bg-danger rounded-pill">{{ cartTotalCount }} 件</span>
-            </div>
-
-            <!-- 清單列表 -->
-            <div class="cart-list">
-                <table class="table table-hover align-middle">
-                    <thead class="table-light sticky-top">
-                        <tr>
-                            <th>品名</th>
-                            <th class="text-center">數量</th>
-                            <th class="text-end">小計</th>
-                            <th></th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <!-- 購物車迴圈 -->
-                        <tr v-for="(item, index) in cart" :key="index">
-                            <td class="fw-bold">{{ item.name }}</td>
-                            <td class="text-center">
-                                <div class="btn-group btn-group-sm" role="group">
-                                    <button class="btn btn-outline-secondary" @click="decreaseQty(item)">-</button>
-                                    <button class="btn btn-light border disabled text-dark fw-bold" style="width: 30px;">{{ item.quantity }}</button>
-                                    <button class="btn btn-outline-secondary" @click="item.quantity++">+</button>
-                                </div>
-                            </td>
-                            <td class="text-end fw-bold">${{ item.price * item.quantity }}</td>
-                            <td class="text-end">
-                                <button class="btn btn-sm btn-link text-danger text-decoration-none" @click="removeFromCart(index)">✕</button>
-                            </td>
-                        </tr>
-                        <!-- 購物車為空時顯示 -->
-                        <tr v-if="cart.length === 0">
-                            <td colspan="4" class="text-center text-muted py-5">
-                                <div class="fs-1 mb-2">👻</div>
-                                尚未加入任何商品<br>
-                                <small>請點選左側或下方輸入編號</small>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-
-            <!-- 底部結帳區 -->
-            <div class="cart-footer">
-                <div class="d-flex justify-content-between align-items-end mb-3">
-                    <span class="text-muted">總金額 Total</span>
-                    <span class="display-5 fw-bold text-danger">${{ totalPrice }}</span>
-                </div>
-                <div class="d-flex gap-2">
-                    <!-- (新增) 取消訂單按鈕 -->
-                    <button class="btn btn-outline-danger w-25 rounded-pill fw-bold" 
-                            @click="clearCart" 
-                            :disabled="cart.length === 0">
-                        取消
-                    </button>
-                    <!-- 結帳按鈕 -->
-                    <button class="btn btn-seven-green w-75 btn-checkout rounded-pill" 
-                            @click="showCheckoutModal" 
-                            :disabled="cart.length === 0">
-                        結 帳
-                    </button>
-                </div>
             </div>
         </div>
-    </div>
 
-    <!-- ========================== -->
-    <!-- 💳 結帳彈窗 (Modal) -->
-    <!-- ========================== -->
-    <div class="modal fade" id="checkoutModal" tabindex="-1">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content rounded-4 shadow">
-                <div class="modal-header bg-success text-white">
-                    <h5 class="modal-title fw-bold">👤 請選擇顧客類型</h5>
-                    <button type="button" class="btn-close btn-close-white" @click="closeModal"></button>
-                </div>
-                <div class="modal-body p-4">
-                    <p class="text-center mb-4 text-muted">請點選客層標籤以完成交易並扣除庫存</p>
-                    <div class="row g-3">
-                        <!-- 客層按鈕 (點下去會觸發 confirmSubmit) -->
-                        <div class="col-6"><button class="btn btn-outline-primary w-100 py-3 fs-5 fw-bold" @click="confirmSubmit('學生')">🧑‍🎓 學生</button></div>
-                        <div class="col-6"><button class="btn btn-outline-dark w-100 py-3 fs-5 fw-bold" @click="confirmSubmit('上班族')">💼 上班族</button></div>
-                        <div class="col-6"><button class="btn btn-outline-success w-100 py-3 fs-5 fw-bold" @click="confirmSubmit('家庭')">🏠 家庭</button></div>
-                        <div class="col-6"><button class="btn btn-outline-warning w-100 py-3 fs-5 fw-bold" @click="confirmSubmit('長輩')">👴 長輩</button></div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="modal fade" id="confirmModal" tabindex="-1" data-bs-backdrop="static">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content rounded-4 shadow border-0">
-                <div class="modal-header bg-primary text-white">
-                    <h5 class="modal-title fw-bold">✨ 確認訂單資訊</h5>
-                    </div>
-                <div class="modal-body p-4 text-center">
-                    
-                    <div class="mb-3 text-muted">即將為以下客層結帳</div>
-                    
-                    <h2 class="fw-bold text-primary mb-4">{{ tempCustomerTag }}</h2>
-                    
-                    <div class="card bg-light border-0 p-3 mb-3">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <span class="fs-5 text-secondary">總金額</span>
-                            <span class="fs-2 fw-bold text-danger">${{ totalPrice }}</span>
-                        </div>
-                        <div class="d-flex justify-content-between align-items-center mt-2">
-                            <span class="text-secondary">商品件數</span>
-                            <span class="fw-bold">{{ cartTotalCount }} 件</span>
-                        </div>
-                    </div>
+        <div class="row g-3 main-content">
 
-                    <p class="small text-muted mb-0">請確認金額無誤後再送出</p>
-                </div>
-                <div class="modal-footer justify-content-center border-0 pb-4">
-                    <button type="button" class="btn btn-light btn-lg px-4 fw-bold rounded-pill" @click="closeConfirmModal">
-                        返回修改
-                    </button>
-                    <button type="button" class="btn btn-primary btn-lg px-5 fw-bold rounded-pill shadow" @click="executeFinalSubmit">
-                        ✅ 確認結帳
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="modal fade" id="successModal" tabindex="-1" data-bs-backdrop="static">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content rounded-4 shadow border-0">
-                <div class="modal-body p-5 text-center">
-                    
-                    <div class="mb-4">
-                        <div style="font-size: 5rem;">🎉</div>
-                    </div>
-
-                    <h2 class="fw-bold text-success mb-3">結帳成功！</h2>
-                    <p class="text-muted mb-4">交易已完成</p>
-
-                    <div class="card bg-light border-0 p-3 mb-4">
-                        <div class="d-flex justify-content-between mb-2">
-                            <span class="text-secondary">客層</span>
-                            <span class="fw-bold">{{ lastOrder.customer }}</span>
-                        </div>
-                        <div class="d-flex justify-content-between">
-                            <span class="text-secondary">支付金額</span>
-                            <span class="fw-bold text-danger fs-5">${{ lastOrder.total }}</span>
-                        </div>
-                    </div>
-
-                    <button type="button" class="btn btn-success btn-lg px-5 rounded-pill shadow w-100" @click="closeSuccessModal">
-                        下一位顧客
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="modal fade" id="clearCartModal" tabindex="-1">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content rounded-4 shadow border-0">
-                <div class="modal-body p-4 text-center">
-
-                    <div class="mb-3 text-danger">
-                        <div style="font-size: 4rem;">🗑️</div>
-                    </div>
-                    <h3 class="fw-bold text-danger mb-3">確定要清空購物車？</h3>
-                    <p class="text-muted mb-4">這將會移除目前清單中的所有商品，<br>此動作無法復原。</p>
-
-                    <div class="d-flex justify-content-center gap-2">
-                        <button type="button" class="btn btn-light btn-lg px-4 fw-bold rounded-pill" @click="closeClearCartModal">
-                            取消
-                        </button>
-                        <button type="button" class="btn btn-danger btn-lg px-4 fw-bold rounded-pill shadow" @click="executeClearCart">
-                            確認清空
-                        </button>
-                    </div>
-
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="modal fade" id="removeItemModal" tabindex="-1">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content rounded-4 shadow border-0">
-                <div class="modal-body p-4 text-center">
-                    
-                    <div class="mb-3 text-warning">
-                        <div style="font-size: 4rem;">⚠️</div>
-                    </div>
-
-                    <h4 class="fw-bold mb-3">移除商品？</h4>
-                    
-                    <p class="text-muted mb-4">
-                        確定要將 
-                        <span class="fw-bold text-dark" v-if="tempItemToRemove">{{ tempItemToRemove.name }}</span> 
-                        從購物車移除嗎？
-                    </p>
-
-                    <div class="d-flex justify-content-center gap-2">
-                        <button type="button" class="btn btn-light btn-lg px-4 fw-bold rounded-pill" @click="closeRemoveItemModal">
-                            保留
-                        </button>
-                        <button type="button" class="btn btn-warning btn-lg px-4 fw-bold rounded-pill shadow text-dark" @click="executeRemoveItem">
-                            確認移除
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="modal fade" id="notFoundModal" tabindex="-1">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content rounded-4 shadow border-0">
-                <div class="modal-body p-4 text-center">
-                    
-                    <div class="mb-3 text-secondary">
-                        <div style="font-size: 4rem;">🤔</div>
-                    </div>
-
-                    <h4 class="fw-bold mb-3 text-dark">找不到此商品</h4>
-                    
-                    <p class="text-muted mb-4">
-                        系統找不到編號 
-                        <span class="fw-bold text-danger mx-1">{{ tempInvalidId }}</span> 
-                        的商品資料，<br>請確認輸入是否正確。
-                    </p>
-
-                    <button type="button" class="btn btn-seven-green btn-lg px-5 fw-bold rounded-pill shadow" @click="closeNotFoundModal">
-                        知道了
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="modal fade" id="orderHistoryModal" tabindex="-1">
-        <div class="modal-dialog modal-dialog-centered modal-lg"> <div class="modal-content rounded-4 shadow border-0">
-                <div class="modal-header bg-secondary text-white">
-                    <h5 class="modal-title fw-bold">📋 交易紀錄 (最近訂單)</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body p-0">
-                    
-                    <div v-if="orders.length === 0" class="text-center py-5 text-muted">
-                        <div class="fs-1 mb-2">📭</div>
-                        目前沒有任何交易紀錄
-                    </div>
-
-                    <div v-else class="list-group list-group-flush" style="max-height: 60vh; overflow-y: auto;">
-    
-                        <div class="list-group-item p-0 border-bottom" v-for="order in orders" :key="order.id">
-                            
-                            <div class="p-3 d-flex justify-content-between align-items-center bg-white">
-                                <div>
-                                    <div class="d-flex align-items-center gap-2 mb-1">
-                                        <span class="badge bg-dark" style="font-size: 1rem;">#{{ order.id }}</span>
-                                        <span class="fw-bold fs-4 text-seven-green ms-2">${{ order.total_amount }}</span>
-                                        <span class="badge bg-info text-dark">{{ order.customer_tag }}</span>
-                                    </div>
-                                    <small class="text-muted">🕒 {{ formatDate(order.sale_time) }}</small>
+            <div class="col-md-8 product-area">
+                <div class="row g-3">
+                    <div class="col-6 col-md-4 col-lg-3" v-for="p in filteredProducts" :key="p.id">
+                        <div class="card product-card h-100 border-0 shadow-sm" @click="addToCart(p)">
+                            <div class="card-body text-center">
+                                <div class="position-absolute top-0 end-0 p-2">
+                                    <span class="badge" :class="p.current_stock > 0 ? 'bg-success' : 'bg-danger'">
+                                        存 [[ p.current_stock ]]
+                                    </span>
                                 </div>
 
-                                <div class="d-flex gap-2">
-                                    <button class="btn btn-outline-secondary btn-sm" @click="toggleDetails(order)">
-                                        {{ order.showDetails ? '▲ 收起' : '📄 明細' }}
-                                    </button>
-                                    <button class="btn btn-outline-danger btn-sm fw-bold" @click="deleteOrder(order)">
-                                        🗑️ 作廢
-                                    </button>
+                                <div class="mb-2" style="font-size: 2.5rem;">
+                                    <img :src="p.image_url" v-if="p.image_url"
+                                        style="width: 60px; height: 60px; object-fit: cover;" class="rounded">
+                                    <span v-else>📦</span>
                                 </div>
+                                <h6 class="fw-bold mb-1">[[ p.name ]]</h6>
+                                <div class="text-primary fw-bold">$[[ p.price ]]</div>
                             </div>
-
-                            <div v-if="order.showDetails" class="bg-light p-3 border-top inner-shadow">
-                                
-                                <div v-if="order.loading" class="text-center text-muted">
-                                    <div class="spinner-border spinner-border-sm" role="status"></div> 載入中...
-                                </div>
-
-                                <table v-else class="table table-sm table-borderless mb-0">
-                                    <thead class="text-secondary border-bottom">
-                                        <tr>
-                                            <th>商品名稱</th>
-                                            <th class="text-center">單價</th>
-                                            <th class="text-center">數量</th>
-                                            <th class="text-end">小計</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <tr v-for="(item, i) in order.items" :key="i">
-                                            <td>{{ item.name }}</td>
-                                            <td class="text-center text-muted">${{ item.price }}</td>
-                                            <td class="text-center fw-bold">x{{ item.quantity }}</td>
-                                            <td class="text-end">${{ item.subtotal }}</td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
-    </div>
 
-    <div class="modal fade" id="deleteOrderModal" tabindex="-1">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content rounded-4 shadow border-0">
-                <div class="modal-body p-4 text-center">
-                    
-                    <div class="mb-3 text-danger">
-                        <div style="font-size: 4rem;">🗑️</div>
+            <div class="col-md-4 cart-area">
+                <div class="card border-0 shadow-lg cart-card">
+                    <div class="card-header bg-white py-3 cart-header">
+                        <h5 class="m-0 fw-bold">🛒 購物清單</h5>
                     </div>
 
-                    <h4 class="fw-bold mb-3 text-dark">確定要作廢此訂單？</h4>
-                    
-                    <p class="text-muted mb-4">
-                        訂單編號：
-                        <span class="fw-bold text-danger fs-5" v-if="tempOrderToDelete">
-                            #<span v-text="tempOrderToDelete.id"></span>
-                        </span>
-                        <span class="small">作廢後，商品庫存將會<strong class="text-success">自動加回</strong>。</span>
-                    </p>
-                    
+                    <div class="cart-panel p-0">
+                        <table class="table table-striped mb-0 align-middle">
+                            <thead class="table-light sticky-top">
+                                <tr>
+                                    <th>品名</th>
+                                    <th>數量</th>
+                                    <th class="text-end">小計</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="(item, index) in cart" :key="item.id">
+                                    <td>[[ item.name ]]</td>
+                                    <td>
+                                        <div class="input-group input-group-sm" style="width: 80px;">
+                                            <button class="btn btn-outline-secondary"
+                                                @click="item.quantity > 1 ? item.quantity-- : removeFromCart(index)">-</button>
+                                            <input type="text" class="form-control text-center px-0"
+                                                :value="item.quantity" readonly>
+                                            <button class="btn btn-outline-secondary"
+                                                @click="item.quantity++">+</button>
+                                        </div>
+                                    </td>
+                                    <td class="text-end fw-bold">$[[ item.price * item.quantity ]]</td>
+                                    <td class="text-end"><button class="btn btn-sm text-danger"
+                                            @click="removeFromCart(index)">✕</button></td>
+                                </tr>
+                                <tr v-if="cart.length === 0">
+                                    <td colspan="4" class="text-center text-muted py-5">
+                                        <div class="fs-1 mb-2">🛒</div>
+                                        尚未加入商品
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
 
-                    <div class="d-flex justify-content-center gap-2">
-                        <button type="button" class="btn btn-light btn-lg px-4 fw-bold rounded-pill" @click="closeDeleteOrderModal">
-                            再想想
-                        </button>
-                        <button type="button" class="btn btn-danger btn-lg px-4 fw-bold rounded-pill shadow" @click="executeDeleteOrder">
-                            確認作廢
+                    <div class="card-footer bg-white p-3 cart-footer">
+                        <div class="d-flex justify-content-between mb-3">
+                            <span class="h5">總金額：</span>
+                            <span class="h3 fw-bold text-danger">$[[ totalAmount ]]</span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label small text-muted">顧客年齡層 (分析用)</label>
+                            <select class="form-select" v-model="customerType">
+                                <option value="Under 20">20歲以下 (學生)</option>
+                                <option value="20-40">20-40歲 (青壯年)</option>
+                                <option value="40-60">40-60歲 (中年)</option>
+                                <option value="Over 60">60歲以上 (銀髮族)</option>
+                            </select>
+                        </div>
+
+                        <button class="btn btn-success w-100 py-3 fw-bold fs-5" @click="checkout"
+                            :disabled="cart.length === 0">
+                            💳 確認結帳
                         </button>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+    {% endraw %}
 
-</div>
-
-<!-- 引入 Vue, Axios, Bootstrap JS -->
-<script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-
-<script>
-    const { createApp } = Vue
-
-    createApp({
-        data() {
-            return {
-                // --- [開發階段] 假資料 ---
-                // 等後端 API 寫好後，這裡可以留空 []，改用 fetchProducts() 填入
-                cart: [],
-                products: [],
-                inputProductId: '', // 用來綁定輸入框的變數
-                modalInstance: null,
-                confirmModalInstance: null, // 確認彈窗
-                clearCartModalInstance: null,// 清空警告彈窗
-                removeItemModalInstance: null, // 控制彈窗
-                notFoundModalInstance: null, // 控制彈窗
-                tempInvalidId: '',           // 用來顯示剛剛輸入錯的號碼
-                
-                selectedCategory: '全部',   // 預設選擇 "全部" 類別
-                tempItemToRemove: null,        // 暫存要被刪除的那個商品物件
-                tempCustomerTag: '',         // 用來暫記使用者剛剛點了 "學生" 還是 "上班族"
-                lastOrder: {
-                    customer: '',
-                    total: 0
+    <script>
+        const { createApp } = Vue
+        createApp({
+            delimiters: ['[[', ']]'],
+            data() {
+                return {
+                    products: [],
+                    cart: [],
+                    filterCat: 'all',
+                    customerType: 'Under 20' // 預設年齡層
+                }
+            },
+            computed: {
+                categories() {
+                    const cats = new Set(this.products.map(p => p.category));
+                    return Array.from(cats).filter(c => c);
                 },
-                orders: [],                 // 存放所有訂單
-                orderHistoryModalInstance: null, // 控制交易紀錄彈窗
-                deleteOrderModalInstance: null, // 控制作廢彈窗
-                tempOrderToDelete: null,        // 暫存要被作廢的那張訂單物件
+                filteredProducts() {
+                    if (this.filterCat === 'all') return this.products;
+                    return this.products.filter(p => p.category === this.filterCat);
+                },
+                totalAmount() {
+                    return this.cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+                }
+            },
+            mounted() {
+                this.fetchProducts();
+            },
+            methods: {
+                fetchProducts() {
+                    axios.get('/api/products').then(res => this.products = res.data);
+                },
+                addToCart(product) {
+                    if (product.current_stock <= 0) {
+                        alert(`❌ "${product.name}" 已經沒貨了！`);
+                        return;
+                    }
+
+                    let existing = this.cart.find(item => item.id === product.id);
+                    if (existing) {
+                        if (existing.quantity + 1 > product.current_stock) {
+                            alert(`❌ "${product.name}" 庫存不足 (只剩 ${product.current_stock})`);
+                            return;
+                        }
+                        existing.quantity++;
+                    } else {
+                        this.cart.push({
+                            id: product.id,
+                            name: product.name,
+                            price: product.price,
+                            quantity: 1
+                        });
+                    }
+                },
+                removeFromCart(index) {
+                    this.cart.splice(index, 1);
+                },
+                checkout() {
+                    if (!confirm(`總金額 $${this.totalAmount}，確定結帳？`)) return;
+
+                    const payload = {
+                        customer_type: this.customerType,
+                        items: this.cart.map(item => ({
+                            id: item.id,
+                            quantity: item.quantity
+                        }))
+                    };
+
+                    axios.post('/api/sales', payload)
+                        .then(res => {
+                            alert(`🎉 結帳成功！\n單號：#${res.data.order_id}`);
+                            this.cart = [];
+                            this.fetchProducts();
+                        })
+                        .catch(err => {
+                            if (err.response && err.response.data && err.response.data.message) {
+                                alert(err.response.data.message);
+                            } else {
+                                alert("結帳失敗: " + err.message);
+                            }
+                        });
+                }
             }
-        },
-        computed: {
-            // 自動計算總金額
-            totalPrice() {
-                return this.cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-            },
-            // 自動從商品列表中抓出所有的分類 (不重複)
-            categoryList() {
-                // 1. 先抓出所有商品的 category
-                const categories = this.products.map(p => p.category);
-                // 2. 用 Set 去除重複，然後轉回陣列
-                // 3. 在最前面加上 '全部'
-                return ['全部', ...new Set(categories)];
-            },
-            // 根據選中的分類，過濾出要顯示的商品
-            filteredProducts() {
-                if (this.selectedCategory === '全部') {
-                    return this.products; // 如果選全部，就回傳所有商品
-                }
-                // 否則只回傳符合該分類的商品
-                return this.products.filter(p => p.category === this.selectedCategory);
-            },
-            // 自動計算總件數
-            cartTotalCount() {
-                return this.cart.reduce((sum, item) => sum + item.quantity, 0);
-            }
-        },
-        mounted() {
-            // 初始化 Bootstrap Modal
-            this.modalInstance = new bootstrap.Modal(document.getElementById('checkoutModal'));
-            // 初始化確認彈窗
-            this.confirmModalInstance = new bootstrap.Modal(document.getElementById('confirmModal'));
-            // 初始化成功彈窗
-            this.successModalInstance = new bootstrap.Modal(document.getElementById('successModal'));
-            // 初始化清空彈窗
-            this.clearCartModalInstance = new bootstrap.Modal(document.getElementById('clearCartModal'));
-            // 初始化移除商品彈窗
-            this.removeItemModalInstance = new bootstrap.Modal(document.getElementById('removeItemModal'));
-            // 初始化查無商品彈窗
-            this.notFoundModalInstance = new bootstrap.Modal(document.getElementById('notFoundModal'));
-            // 初始化交易紀錄彈窗
-            this.orderHistoryModalInstance = new bootstrap.Modal(document.getElementById('orderHistoryModal'));
-            // 初始化作廢彈窗
-            this.deleteOrderModalInstance = new bootstrap.Modal(document.getElementById('deleteOrderModal'));
-            // TODO: 正式串接時，請把下面這行註解打開
-            this.fetchProducts();
-        },
-        methods: {
-            // --- 1. 串接後端 API：取得商品列表 ---
-            fetchProducts() {
-                // 假設你的電腦 IP 是 127.0.0.1，之後要改成主機的 IP
-                axios.get('http://127.0.0.1:5000/api/products')
-                    .then(response => {
-                        this.products = response.data;
-                        console.log(this.products);
-                    })
-                    .catch(error => {
-                        console.error("無法取得商品資料:", error);
-                        alert("連線失敗，目前顯示假資料");
-                    });
-            },
-
-            // --- 2. 購物車邏輯 ---
-            addToCart(product) {
-                // if (product.current_stock <= 0) {
-                //     alert(`❌ ${product.name} 庫存不足！無法加入`);
-                //     return;
-                // }
-                
-                // 檢查是否已在購物車
-                const existingItem = this.cart.find(item => item.id === product.id);
-                
-                if (existingItem) {
-                    // // 簡單檢查：購物車數量不能超過庫存
-                    // // (注意：這只是前端防呆，後端 API 也要再檢查一次)
-                    // if (existingItem.quantity < product.current_stock) {
-                    //     existingItem.quantity++;
-                    // } else {
-                    //     alert("已達庫存上限！");
-                    // }
-                    existingItem.quantity++;
-                } else {
-                    this.cart.push({
-                        id: product.id,
-                        name: product.name,
-                        price: product.price,
-                        quantity: 1
-                    });
-                }
-            },
-
-            // --- 新增功能：透過輸入 ID 加入商品 ---
-            addProductById() {
-                if (!this.inputProductId) return; // 沒輸入就不做事
-
-                // 把輸入轉成數字 (因為 id 是數字)
-                const targetId = parseInt(this.inputProductId);
-                
-                // 在 products 陣列裡找有沒有這個 ID
-                const product = this.products.find(p => p.id === targetId);
-
-                if (product) {
-                    this.addToCart(product); // 找到了！加入購物車
-                    this.inputProductId = ''; // 清空輸入框
-                } else {
-                    // 把輸入錯的號碼存起來 (給 Modal 顯示用)
-                    this.tempInvalidId = this.inputProductId;
-                    // 打開「查無商品」彈窗
-                    this.notFoundModalInstance.show();
-                    this.inputProductId = ''; // 清空輸入框
-                }
-            },
-            closeNotFoundModal() {
-                this.notFoundModalInstance.hide();
-
-                // 稍微延遲一下，等視窗關閉動畫跑完，把游標鎖回輸入框
-                setTimeout(() => {
-                    document.querySelector('.input-section input').focus();
-                }, 300);
-            },
-            
-            decreaseQty(item) {
-                if (item.quantity > 1) {
-                    item.quantity--;
-                } else {
-                    this.tempItemToRemove = item;
-                    // 打開確認彈窗
-                    this.removeItemModalInstance.show();
-                }
-            },
-            executeRemoveItem() {
-                if (this.tempItemToRemove) {
-                    // 過濾掉該商品
-                    this.cart = this.cart.filter(c => c.id !== this.tempItemToRemove.id);
-                    
-                    // 清空暫存
-                    this.tempItemToRemove = null;
-                }
-                // 關閉彈窗
-                this.removeItemModalInstance.hide();
-            },
-
-            // 關閉彈窗 (按下保留時)
-            closeRemoveItemModal() {
-                this.tempItemToRemove = null; // 清空暫存
-                this.removeItemModalInstance.hide();
-            },
-
-            removeFromCart(index) {
-                // this.cart.splice(index, 1);
-                const item = this.cart[index];
-                
-                // 2. 把這個商品存到暫存區 (給 Modal 顯示名字用)
-                this.tempItemToRemove = item;
-                
-                // 3. 打開剛剛做好的「移除確認彈窗」
-                this.removeItemModalInstance.show();
-            },
-
-            // (取消整筆訂單
-            clearCart() {
-                // 打開 Modal
-                this.clearCartModalInstance.show();
-            },
-            closeClearCartModal() {
-                this.clearCartModalInstance.hide();
-            },
-
-            executeClearCart() {
-                this.cart = [];
-                this.closeClearCartModal();
-            },
-
-            showCheckoutModal() {
-                this.modalInstance.show();
-            },
-
-            closeModal() {
-                this.modalInstance.hide();
-            },
-
-            // 確認結帳提示
-            confirmSubmit(customerTag) {
-                // 1. 先把使用者選的客層 (例如 '學生') 存起來
-                this.tempCustomerTag = customerTag;
-
-                // 2. 關閉目前的「客層選擇彈窗」
-                this.modalInstance.hide();
-
-                // 3. 打開新的「確認結帳彈窗」
-                // 使用 setTimeout 稍微延遲一點點，讓動畫比較順暢，避免兩個黑底重疊
-                setTimeout(() => {
-                    this.confirmModalInstance.show();
-                }, 200);
-            },
-
-            // 使用者按下「返回修改」時觸發
-            closeConfirmModal() {
-                // 關閉目前的確認視窗就好
-                this.confirmModalInstance.hide();
-
-                // //回到上一步選客層
-                // this.modalInstance.show(); 
-            },
-
-            // 使用者在確認彈窗按下「確認結帳」時觸發
-            executeFinalSubmit() {
-                // 呼叫原本寫好的送出邏輯，並傳入我們暫存的客層標籤
-                this.submitOrder(this.tempCustomerTag);
-                
-                // 關閉確認彈窗
-                this.confirmModalInstance.hide();
-            },
-
-            // --- 3. 串接後端 API：送出訂單 ---
-            submitOrder(customerTag) {
-
-                this.lastOrder = {
-                    customer: customerTag,
-                    total: this.totalPrice
-                };
-                
-                const orderData = {
-                    customer_tag: customerTag,
-                    total_amount: this.totalPrice,
-                    items: this.cart.map(item => ({
-                        product_id: item.id,
-                        quantity: item.quantity,
-                        subtotal: item.price * item.quantity
-                    }))
-                };
-
-                console.log("送出訂單:", orderData);
-
-                // TODO: 正式串接時，請把下面這段打開
-                
-                axios.post('http://127.0.0.1:5000/api/sales/checkout', orderData)
-                    .then(response => {
-                        // 成功後：清空購物車、關閉視窗
-                        this.cart = [];
-                        this.closeModal();
-                        
-                        // 顯示成功彈窗
-                        this.successModalInstance.show();
-                        
-                        // 🔥 重要：重新抓取商品資料 (因為庫存變了！)
-                        this.fetchProducts(); 
-                    })
-                    .catch(error => {
-                        console.error(error);
-                        alert("❌ 結帳失敗：" + error.message);
-                    });
-                
-
-                // // --- 模擬結帳成功，串接後請刪除 ---
-                // this.cart = [];
-                // this.closeModal();
-
-                // //打開「結帳成功」彈窗
-                // this.successModalInstance.show();
-                
-            },
-
-            closeSuccessModal() {
-                this.successModalInstance.hide();
-                // 這裡不需要做任何事，因為購物車已經清空了，直接回到主畫面即可
-            },
-            // 1. 打開交易紀錄視窗 (並抓取最新資料)
-            openOrderHistory() {
-                this.fetchOrders(); // 先去後端抓資料
-                this.orderHistoryModalInstance.show(); // 再打開視窗
-            },
-
-            // 2. 呼叫後端 API：取得訂單列表
-            fetchOrders() {
-                axios.get('http://127.0.0.1:5000/api/sales/orders')
-                    .then(response => {
-                        this.orders = response.data;
-                    })
-                    .catch(error => {
-                        console.error("無法取得訂單:", error);
-                        alert("無法取得交易紀錄");
-                    });
-            },
-
-            // 3. 呼叫後端 API：作廢訂單
-            deleteOrder(order) {
-                this.tempOrderToDelete = order;
-                this.deleteOrderModalInstance.show();
-            },
-
-            // 使用者在作廢彈窗按下「確認作廢」時觸發
-            executeDeleteOrder() {
-
-                // 防呆檢查
-                if (!this.tempOrderToDelete) {
-                    console.error("錯誤：沒有選中任何訂單");
-                    return;
-                }
-
-                axios.delete(`http://127.0.0.1:5000/api/sales/orders/${this.tempOrderToDelete.id}`)
-                    .then(response => {
-                        // 成功後要做的事
-                        this.deleteOrderModalInstance.hide(); // 關閉視窗
-                        this.fetchOrders();   // 更新訂單列表
-                        this.fetchProducts(); // 更新商品庫存
-
-                    })
-                    .catch(error => {
-                        console.error("作廢失敗:", error);
-                        const msg = error.response?.data?.message || error.message;
-                        alert("❌ 作廢失敗：" + msg);
-                    });
-            },
-            // 關閉作廢彈窗
-            closeDeleteOrderModal() {
-                this.tempOrderToDelete = null;
-                this.deleteOrderModalInstance.hide();
-            },
-            
-            // 格式化時間的小工具 (把醜醜的 SQL 時間變好看)
-            formatDate(dateString) {
-                const date = new Date(dateString);
-                return date.toLocaleString('zh-TW', { hour12: false });
-            },
-
-            // 切換顯示/隱藏明細
-            toggleDetails(order) {
-                // 如果這張訂單已經有 items 資料且是展開狀態 -> 收起來
-                if (order.showDetails) {
-                    order.showDetails = false;
-                    return; // 結束
-                }
-
-                // 如果還沒抓過資料 -> 去後端抓
-                // 先給一個 loading 狀態
-                order.loading = true; 
-                
-                axios.get(`http://127.0.0.1:5000/api/sales/orders/${order.id}/items`)
-                    .then(response => {
-                        // Vue 3 的寫法：直接把新屬性塞進去物件裡
-                        order.items = response.data;
-                        order.showDetails = true; // 設定為展開
-                    })
-                    .catch(error => {
-                        console.error("抓取明細失敗", error);
-                        alert("無法讀取明細");
-                    })
-                    .finally(() => {
-                        order.loading = false;
-                    });
-            },
-        }
-    }).mount('#app')
-</script>
-
-{% endraw %}
+        }).mount('#app')
+    </script>
 </body>
+
 </html>

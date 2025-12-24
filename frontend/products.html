@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <title>商品管理</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+</head>
+
+<body class="bg-light">
+
+    {% raw %}
+    <div id="app" class="container py-5">
+
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div class="d-flex align-items-center gap-3">
+                <a href="/" class="btn btn-outline-secondary">⬅️ 回首頁</a>
+                <h2 class="m-0">📦 商品管理</h2>
+            </div>
+            <button class="btn btn-primary" @click="openModal('add')">＋ 新增商品</button>
+        </div>
+
+        <table class="table table-hover bg-white shadow-sm rounded align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>ID</th>
+                    <th>圖片</th>
+                    <th>品名</th>
+                    <th>分類</th>
+                    <th>庫存</th>
+                    <th>價格</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr v-for="p in products" :key="p.id">
+                    <td>[[ p.id ]]</td>
+                    <td>
+                        <img :src="p.image_url" v-if="p.image_url" style="width: 40px; height: 40px; object-fit: cover;"
+                            class="rounded">
+                        <span v-else class="text-muted small">無</span>
+                    </td>
+                    <td class="fw-bold">[[ p.name ]]</td>
+                    <td><span class="badge bg-secondary">[[ p.category ]]</span></td>
+
+                    <td :class="{'text-danger fw-bold': p.current_stock < p.safe_stock}">
+                        [[ p.current_stock ]]
+                    </td>
+
+                    <td>$[[ p.price ]]</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary me-2" @click="openModal('edit', p)">編輯</button>
+                        <button class="btn btn-sm btn-outline-danger" @click="deleteProduct(p.id)">刪除</button>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="modal fade" id="productModal" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">[[ isEdit ? '編輯商品' : '新增商品' ]]</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-2">
+                            <label>品名</label>
+                            <input v-model="temp.name" class="form-control">
+                        </div>
+                        <div class="row mb-2">
+                            <div class="col"><label>分類</label><input v-model="temp.category" class="form-control"></div>
+                            <div class="col"><label>價格</label><input v-model.number="temp.price" type="number"
+                                    class="form-control"></div>
+                        </div>
+                        <div class="row mb-2">
+                            <div class="col"><label>基本保底庫存</label><input v-model.number="temp.safe_stock" type="number"
+                                    class="form-control"></div>
+                            <div class="col"><label>補貨天數</label><input v-model.number="temp.lead_time" type="number"
+                                    class="form-control"></div>
+                        </div>
+                        <div class="mb-2">
+                            <label>圖片網址</label>
+                            <input v-model="temp.image_url" class="form-control" placeholder="http://...">
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-primary w-100" @click="saveProduct">儲存</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endraw %}
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const { createApp } = Vue
+        createApp({
+            delimiters: ['[[', ']]'],
+            data() { return { products: [], temp: {}, modal: null, isEdit: false } },
+            mounted() {
+                this.modal = new bootstrap.Modal(document.getElementById('productModal'));
+                this.fetchProducts();
+            },
+            methods: {
+                fetchProducts() {
+                    axios.get('/api/products').then(res => this.products = res.data);
+                },
+                openModal(type, product) {
+                    this.isEdit = (type === 'edit');
+                    if (this.isEdit) {
+                        this.temp = { ...product }; // 複製一份，避免改到一半影響列表
+                    } else {
+                        this.temp = { current_stock: 0, safe_stock: 10, lead_time: 2 }; // 預設值
+                    }
+                    this.modal.show();
+                },
+                saveProduct() {
+                    if (this.isEdit) {
+                        // 編輯模式 (PUT)
+                        axios.put(`/api/products/${this.temp.id}`, this.temp)
+                            .then(() => { this.modal.hide(); this.fetchProducts(); })
+                            .catch(err => alert("更新失敗: " + err.message));
+                    } else {
+                        // 新增模式 (POST)
+                        axios.post('/api/products', this.temp)
+                            .then(() => { this.modal.hide(); this.fetchProducts(); })
+                            .catch(err => alert("新增失敗: " + err.message));
+                    }
+                },
+                deleteProduct(id) {
+                    if (!confirm('確定刪除？')) return;
+
+                    axios.delete(`/api/products/${id}`)
+                        .then(() => this.fetchProducts())
+                        .catch(err => {
+                            // 3. 顯示後端傳回來的錯誤訊息 (例如：已賣過不能刪)
+                            if (err.response && err.response.data && err.response.data.message) {
+                                alert("❌ 刪除失敗：\n" + err.response.data.message);
+                            } else {
+                                alert("刪除失敗");
+                            }
+                        });
+                }
+            }
+        }).mount('#app')
+    </script>
+</body>
+
+</html>
