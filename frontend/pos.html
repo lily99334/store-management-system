@@ -4,16 +4,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>前台 POS 收銀系統</title>
+    <title>前台 POS 收銀</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <style>
-        /* 讓網頁像 APP 一樣固定高度，不出現最外層捲軸 */
-        body,
-        html {
+        :root {
+            --primary-color: #0d6efd;
+            --bg-color: #f8f9fa;
+        }
+
+        body, html {
             height: 100vh;
             overflow: hidden;
+            background-color: var(--bg-color);
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
         }
 
         #app {
@@ -22,55 +28,158 @@
             flex-direction: column;
         }
 
-        /* 主要內容區塊自動填滿剩餘空間 */
+        /* 頂部導航 */
+        .navbar-pos {
+            background: white;
+            border-bottom: 1px solid #dee2e6;
+            padding: 0.8rem 1.5rem;
+            flex-shrink: 0;
+            z-index: 1000;
+        }
+
+        /* 隱藏 Input Number 箭頭 */
+        input::-webkit-outer-spin-button,
+        input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type=number] {
+            -moz-appearance: textfield;
+        }
+
+        /* 分類列 */
+        .category-bar {
+            overflow-x: auto;
+            white-space: nowrap;
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        .category-bar::-webkit-scrollbar {
+            display: none;
+        }
+        .cat-pill {
+            border-radius: 50rem;
+            padding: 0.4rem 1rem;
+            font-size: 0.95rem;
+            font-weight: 500;
+            transition: all 0.2s;
+            border: 1px solid #dee2e6;
+            background: white;
+            color: #666;
+        }
+        .cat-pill.active {
+            background-color: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+            box-shadow: 0 4px 6px rgba(13, 110, 253, 0.2);
+        }
+        .cat-pill:hover:not(.active) {
+            background-color: #e9ecef;
+        }
+
         .main-content {
             flex: 1;
             overflow: hidden;
-            padding-bottom: 10px;
+            padding: 1rem;
         }
 
-        /* 左邊商品區：獨立捲軸 */
+        /* 商品區捲動設定 */
         .product-area {
-            height: 100%;
             overflow-y: auto;
-            padding-right: 5px;
+            flex: 1;
         }
 
-        /* 右邊購物車區：卡片填滿高度，內容自適應 */
+        .product-card {
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+            overflow: hidden;
+            position: relative;
+        }
+        .product-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px rgba(0,0,0,0.1) !important;
+        }
+        .product-card:active {
+            transform: scale(0.98);
+        }
+        
+        .out-of-stock {
+            opacity: 0.6;
+            pointer-events: none;
+            filter: grayscale(1);
+        }
+        .stock-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            font-size: 0.8rem;
+            backdrop-filter: blur(4px);
+        }
+        .id-badge {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            font-size: 0.7rem;
+            color: #999;
+            background: rgba(255,255,255,0.8);
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+
         .cart-area {
-            height: 100%;
-        }
-
-        .cart-card {
             height: 100%;
             display: flex;
             flex-direction: column;
         }
-
-        .cart-header {
-            flex-shrink: 0;
+        .cart-card {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            border: none;
+            border-radius: 1rem;
+            overflow: hidden;
         }
-
-        .cart-footer {
-            flex-shrink: 0;
-        }
-
-        /* 購物車列表：佔據中間剩餘空間，獨立捲軸 */
         .cart-panel {
             flex: 1;
             overflow-y: auto;
-            background-color: #fff;
+            background: #fff;
+        }
+        .cart-footer {
+            background: white;
+            border-top: 1px solid #eee;
+            box-shadow: 0 -4px 10px rgba(0,0,0,0.05);
+            z-index: 10;
         }
 
-        /* 商品卡片樣式 */
-        .product-card {
-            cursor: pointer;
+        .qty-btn {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid #dee2e6;
+            background: white;
             transition: 0.2s;
+            cursor: pointer;
+        }
+        .qty-btn:hover {
+            background: #f8f9fa;
+        }
+        .qty-btn:active {
+            background: #e9ecef;
         }
 
-        .product-card:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        .age-selector .btn-outline-secondary {
+            font-size: 0.8rem;
+            padding: 0.4rem 0.1rem;
+            font-weight: 500;
+        }
+        .age-selector .btn-check:checked + .btn-outline-secondary {
+            background-color: #6c757d;
+            color: white;
+            border-color: #6c757d;
         }
     </style>
 </head>
@@ -78,112 +187,175 @@
 <body class="bg-light">
 
     {% raw %}
-    <div id="app" class="container-fluid py-3">
+    <div id="app">
 
-        <div class="d-flex justify-content-between align-items-center mb-3 flex-shrink-0">
+        <div class="navbar-pos d-flex justify-content-between align-items-center shadow-sm">
             <div class="d-flex align-items-center gap-3">
-                <a href="/" class="btn btn-outline-secondary">⬅️ 回首頁</a>
-                <h3 class="m-0 fw-bold">🏪 前台 POS 收銀</h3>
+                <a href="/" class="btn btn-light rounded-circle border shadow-sm" style="width: 40px; height: 40px; display:flex; align-items:center; justify-content:center;">
+                    <i class="bi bi-arrow-left"></i>
+                </a>
+                <h5 class="m-0 fw-bold text-dark">🏪 POS 收銀</h5>
             </div>
-            <div style="overflow-x: auto; white-space: nowrap; max-width: 50%;">
-                <button class="btn btn-sm me-1" :class="filterCat === 'all' ? 'btn-dark' : 'btn-outline-dark'"
-                    @click="filterCat = 'all'">全部</button>
-                <button v-for="cat in categories" :key="cat" class="btn btn-sm me-1"
-                    :class="filterCat === cat ? 'btn-dark' : 'btn-outline-dark'" @click="filterCat = cat">
-                    [[ cat ]]
-                </button>
+            <div class="text-end">
+                <div class="fw-bold text-dark" style="font-family: monospace; font-size: 1.2rem;">
+                    [[ currentTime ]]
+                </div>
             </div>
         </div>
 
-        <div class="row g-3 main-content">
+        <div class="container-fluid main-content">
+            <div class="row h-100 g-3">
+                
+                <div class="col-md-8 d-flex flex-column h-100 position-relative">
+                    
+                    <div class="category-bar bg-white px-3 py-2 shadow-sm border rounded-top d-flex align-items-center gap-2 flex-shrink-0" style="z-index: 10; border-bottom: none !important;">
+                        <span class="text-muted small fw-bold me-1"><i class="bi bi-funnel-fill"></i> 分類:</span>
+                        <button class="btn cat-pill" :class="{ active: filterCat === 'all' }" @click="filterCat = 'all'">全部</button>
+                        <button v-for="cat in categories" :key="cat" class="btn cat-pill" :class="{ active: filterCat === cat }" @click="filterCat = cat">[[ cat ]]</button>
+                    </div>
 
-            <div class="col-md-8 product-area">
-                <div class="row g-3">
-                    <div class="col-6 col-md-4 col-lg-3" v-for="p in filteredProducts" :key="p.id">
-                        <div class="card product-card h-100 border-0 shadow-sm" @click="addToCart(p)">
-                            <div class="card-body text-center">
-                                <div class="position-absolute top-0 end-0 p-2">
-                                    <span class="badge" :class="p.current_stock > 0 ? 'bg-success' : 'bg-danger'">
-                                        存 [[ p.current_stock ]]
-                                    </span>
-                                </div>
+                    <div class="product-area p-3 bg-white border-start border-end shadow-sm">
+                        <div class="row g-3 pb-3">
+                            <div class="col-6 col-md-4 col-lg-3" v-for="p in filteredProducts" :key="p.id">
+                                <div class="card product-card h-100 shadow-sm border" 
+                                     :class="{ 'out-of-stock': p.current_stock <= 0 }"
+                                     @click="addToCart(p)">
+                                    
+                                    <div class="card-body text-center p-3 d-flex flex-column justify-content-between">
+                                        <span class="id-badge">ID: [[ p.id ]]</span>
+                                        <span class="badge rounded-pill stock-badge shadow-sm" 
+                                              :class="p.current_stock > 5 ? 'bg-success bg-opacity-75' : (p.current_stock > 0 ? 'bg-warning text-dark' : 'bg-secondary')">
+                                            [[ p.current_stock > 0 ? '庫存 ' + p.current_stock : '補貨中' ]]
+                                        </span>
 
-                                <div class="mb-2" style="font-size: 2.5rem;">
-                                    <img :src="p.image_url" v-if="p.image_url"
-                                        style="width: 60px; height: 60px; object-fit: cover;" class="rounded">
-                                    <span v-else>📦</span>
+                                        <div class="mb-3 mt-2 d-flex align-items-center justify-content-center" style="height: 80px;">
+                                            <img :src="p.image_url" v-if="p.image_url" 
+                                                 style="max-width: 100%; max-height: 100%; object-fit: contain;" 
+                                                 class="rounded">
+                                            <span v-else style="font-size: 3rem;">📦</span>
+                                        </div>
+                                        
+                                        <div>
+                                            <h6 class="fw-bold text-dark text-truncate mb-1">[[ p.name ]]</h6>
+                                            <div class="fs-5 fw-bold text-primary">$[[ p.price ]]</div>
+                                        </div>
+                                    </div>
+                                    <div v-if="p.current_stock <= 0" class="position-absolute top-50 start-50 translate-middle fw-bold text-white bg-dark px-3 py-1 rounded shadow" style="white-space: nowrap;">
+                                        已售完
+                                    </div>
                                 </div>
-                                <h6 class="fw-bold mb-1">[[ p.name ]]</h6>
-                                <div class="text-primary fw-bold">$[[ p.price ]]</div>
                             </div>
                         </div>
                     </div>
+
+                    <div class="p-3 bg-white border rounded-bottom shadow-sm flex-shrink-0" style="border-top: 1px solid #dee2e6 !important;">
+                        <div class="input-group">
+                            <span class="input-group-text bg-white border-end-0 text-muted ps-3">
+                                <i class="bi bi-upc-scan fs-5"></i>
+                            </span>
+                            <input type="text" 
+                                   class="form-control border-start-0 ps-2" 
+                                   placeholder="掃描條碼或輸入 ID..." 
+                                   v-model="barcodeInput" 
+                                   @keyup.enter="addByBarcode"
+                                   id="barcodeInput"
+                                   autocomplete="off">
+                            <button class="btn btn-primary px-4 fw-bold" type="button" @click="addByBarcode">
+                                <i class="bi bi-plus-lg me-1"></i> 加入
+                            </button>
+                        </div>
+                    </div>
+
                 </div>
-            </div>
 
-            <div class="col-md-4 cart-area">
-                <div class="card border-0 shadow-lg cart-card">
-                    <div class="card-header bg-white py-3 cart-header">
-                        <h5 class="m-0 fw-bold">🛒 購物清單</h5>
-                    </div>
-
-                    <div class="cart-panel p-0">
-                        <table class="table table-striped mb-0 align-middle">
-                            <thead class="table-light sticky-top">
-                                <tr>
-                                    <th>品名</th>
-                                    <th>數量</th>
-                                    <th class="text-end">小計</th>
-                                    <th></th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr v-for="(item, index) in cart" :key="item.id">
-                                    <td>[[ item.name ]]</td>
-                                    <td>
-                                        <div class="input-group input-group-sm" style="width: 80px;">
-                                            <button class="btn btn-outline-secondary"
-                                                @click="item.quantity > 1 ? item.quantity-- : removeFromCart(index)">-</button>
-                                            <input type="text" class="form-control text-center px-0"
-                                                :value="item.quantity" readonly>
-                                            <button class="btn btn-outline-secondary"
-                                                @click="item.quantity++">+</button>
-                                        </div>
-                                    </td>
-                                    <td class="text-end fw-bold">$[[ item.price * item.quantity ]]</td>
-                                    <td class="text-end"><button class="btn btn-sm text-danger"
-                                            @click="removeFromCart(index)">✕</button></td>
-                                </tr>
-                                <tr v-if="cart.length === 0">
-                                    <td colspan="4" class="text-center text-muted py-5">
-                                        <div class="fs-1 mb-2">🛒</div>
-                                        尚未加入商品
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <div class="card-footer bg-white p-3 cart-footer">
-                        <div class="d-flex justify-content-between mb-3">
-                            <span class="h5">總金額：</span>
-                            <span class="h3 fw-bold text-danger">$[[ totalAmount ]]</span>
+                <div class="col-md-4 cart-area">
+                    <div class="card shadow-lg cart-card">
+                        <div class="card-header bg-white py-3 border-bottom">
+                            <h5 class="m-0 fw-bold d-flex justify-content-between align-items-center">
+                                <span>🛒 購物清單</span>
+                                <span class="badge bg-primary rounded-pill">[[ cartTotalItems ]] 項</span>
+                            </h5>
                         </div>
 
-                        <div class="mb-3">
-                            <label class="form-label small text-muted">顧客年齡層 (分析用)</label>
-                            <select class="form-select" v-model="customerType">
-                                <option value="Under 20">20歲以下 (學生)</option>
-                                <option value="20-40">20-40歲 (青壯年)</option>
-                                <option value="40-60">40-60歲 (中年)</option>
-                                <option value="Over 60">60歲以上 (銀髮族)</option>
-                            </select>
+                        <div class="cart-panel p-0">
+                            <div v-if="cart.length === 0" class="h-100 d-flex flex-column align-items-center justify-content-center text-muted">
+                                <i class="bi bi-cart-x" style="font-size: 4rem; opacity: 0.3;"></i>
+                                <p class="mt-3">尚未加入商品</p>
+                                <small>請點擊左側商品或下方輸入編號</small>
+                            </div>
+
+                            <table v-else class="table table-hover mb-0 align-middle">
+                                <thead class="table-light sticky-top" style="z-index: 5;">
+                                    <tr>
+                                        <th class="ps-3">品名</th>
+                                        <th class="text-center">數量</th>
+                                        <th class="text-end pe-3">小計</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr v-for="(item, index) in cart" :key="item.id">
+                                        <td class="ps-3">
+                                            <div class="fw-bold text-truncate" style="max-width: 100px;">[[ item.name ]]</div>
+                                            <div class="small text-muted">$[[ item.price ]]</div>
+                                        </td>
+                                        <td>
+                                            <div class="d-flex align-items-center justify-content-center gap-2">
+                                                <button class="qty-btn text-danger" @click="updateQty(index, -1)">
+                                                    <i class="bi bi-dash"></i>
+                                                </button>
+                                                
+                                                <input type="number" 
+                                                       class="form-control form-control-sm text-center border-0 p-0 fw-bold bg-transparent"
+                                                       style="width: 50px; font-size: 1.1rem;"
+                                                       v-model.number="item.quantity"
+                                                       @change="validateQty(item)">
+
+                                                <button class="qty-btn text-success" @click="updateQty(index, 1)">
+                                                    <i class="bi bi-plus"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                        <td class="text-end fw-bold pe-3">$[[ item.price * item.quantity ]]</td>
+                                        <td class="text-end pe-2">
+                                            <button class="btn btn-sm text-secondary" @click="removeFromCart(index)">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
 
-                        <button class="btn btn-success w-100 py-3 fw-bold fs-5" @click="checkout"
-                            :disabled="cart.length === 0">
-                            💳 確認結帳
-                        </button>
+                        <div class="cart-footer p-3">
+                            <div class="mb-3">
+                                <label class="form-label small text-muted fw-bold mb-1">顧客年齡層 (必選)</label>
+                                <div class="btn-group w-100 age-selector" role="group">
+                                    <input type="radio" class="btn-check" name="age" id="age1" value="Under 20" v-model="customerType">
+                                    <label class="btn btn-outline-secondary" for="age1">學生(20↓)</label>
+
+                                    <input type="radio" class="btn-check" name="age" id="age2" value="20-40" v-model="customerType">
+                                    <label class="btn btn-outline-secondary" for="age2">青壯年(20~40)</label>
+
+                                    <input type="radio" class="btn-check" name="age" id="age3" value="40-60" v-model="customerType">
+                                    <label class="btn btn-outline-secondary" for="age3">中年(40~60)</label>
+
+                                    <input type="radio" class="btn-check" name="age" id="age4" value="Over 60" v-model="customerType">
+                                    <label class="btn btn-outline-secondary" for="age4">長者(60↑)</label>
+                                </div>
+                            </div>
+
+                            <div class="d-flex justify-content-between align-items-end mb-3">
+                                <span class="h6 text-muted mb-1">總金額</span>
+                                <span class="display-6 fw-bold text-danger" style="line-height: 1;">$[[ totalAmount ]]</span>
+                            </div>
+
+                            <button class="btn btn-primary w-100 py-3 fw-bold fs-5 shadow-sm" 
+                                    @click="checkout" 
+                                    :disabled="cart.length === 0">
+                                <i class="bi bi-credit-card me-2"></i> 確認結帳
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -200,13 +372,15 @@
                     products: [],
                     cart: [],
                     filterCat: 'all',
-                    customerType: 'Under 20' // 預設年齡層
+                    customerType: '20-40',
+                    currentTime: '',
+                    barcodeInput: ''
                 }
             },
             computed: {
                 categories() {
                     const cats = new Set(this.products.map(p => p.category));
-                    return Array.from(cats).filter(c => c);
+                    return Array.from(cats).filter(c => c).sort();
                 },
                 filteredProducts() {
                     if (this.filterCat === 'all') return this.products;
@@ -214,25 +388,51 @@
                 },
                 totalAmount() {
                     return this.cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+                },
+                cartTotalItems() {
+                    return this.cart.reduce((sum, item) => sum + item.quantity, 0);
                 }
             },
             mounted() {
                 this.fetchProducts();
+                this.updateTime();
+                setInterval(this.updateTime, 1000);
             },
             methods: {
+                updateTime() {
+                    const now = new Date();
+                    this.currentTime = now.toLocaleTimeString('zh-TW', { hour12: false, hour: '2-digit', minute:'2-digit' });
+                },
                 fetchProducts() {
                     axios.get('/api/products').then(res => this.products = res.data);
                 },
-                addToCart(product) {
-                    if (product.current_stock <= 0) {
-                        alert(`❌ "${product.name}" 已經沒貨了！`);
-                        return;
+                
+                // 透過輸入框加入商品
+                addByBarcode() {
+                    if (!this.barcodeInput) return;
+                    const product = this.products.find(p => p.id == this.barcodeInput);
+
+                    if (product) {
+                        // 修改這裡：先檢查庫存，如果是 0 則跳出警告
+                        if (product.current_stock <= 0) {
+                            alert(`❌ "${product.name}" 已經賣完了！(庫存: 0)`);
+                        } else {
+                            this.addToCart(product);
+                        }
+                        this.barcodeInput = ''; // 清空輸入框
+                    } else {
+                        alert(`❌ 找不到編號為 "${this.barcodeInput}" 的商品！`);
+                        this.barcodeInput = '';
                     }
+                },
+
+                addToCart(product) {
+                    if (product.current_stock <= 0) return;
 
                     let existing = this.cart.find(item => item.id === product.id);
                     if (existing) {
                         if (existing.quantity + 1 > product.current_stock) {
-                            alert(`❌ "${product.name}" 庫存不足 (只剩 ${product.current_stock})`);
+                            alert(`❌ 庫存不足！目前只剩 ${product.current_stock}`);
                             return;
                         }
                         existing.quantity++;
@@ -241,8 +441,31 @@
                             id: product.id,
                             name: product.name,
                             price: product.price,
-                            quantity: 1
+                            quantity: 1,
+                            max_stock: product.current_stock
                         });
+                    }
+                },
+                updateQty(index, change) {
+                    const item = this.cart[index];
+                    const newQty = item.quantity + change;
+                    
+                    if (newQty <= 0) {
+                        this.removeFromCart(index);
+                    } else if (newQty > item.max_stock) {
+                        alert(`❌ 庫存不足！目前只剩 ${item.max_stock}`);
+                        item.quantity = item.max_stock;
+                    } else {
+                        item.quantity = newQty;
+                    }
+                },
+                validateQty(item) {
+                    if (!item.quantity || item.quantity < 1) {
+                        item.quantity = 1;
+                    }
+                    if (item.quantity > item.max_stock) {
+                        alert(`❌ 庫存不足！目前只剩 ${item.max_stock}`);
+                        item.quantity = item.max_stock;
                     }
                 },
                 removeFromCart(index) {
@@ -266,11 +489,8 @@
                             this.fetchProducts();
                         })
                         .catch(err => {
-                            if (err.response && err.response.data && err.response.data.message) {
-                                alert(err.response.data.message);
-                            } else {
-                                alert("結帳失敗: " + err.message);
-                            }
+                            const msg = err.response?.data?.message || err.message;
+                            alert("結帳失敗: " + msg);
                         });
                 }
             }
