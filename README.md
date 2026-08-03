@@ -21,7 +21,7 @@
 1. 開啟 MySQL Workbench。
 2. 開啟 `database/init.sql` 檔案。
 3. 執行腳本以建立 `store_db` 資料庫與相關表格。
-4. 確認 `backend/db_config.py` 中的密碼與你的 MySQL 設定一致。
+4. 確認 `backend/db_config.py` 中的密碼與你的 MySQL 設定一致。 
 
 ### 3. 安裝依賴套件
 在專案根目錄執行以下指令：
